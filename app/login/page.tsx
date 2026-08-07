@@ -119,6 +119,11 @@ function LoginPageInner() {
         password: String(form.get("password") ?? ""),
       };
 
+      const redirectToWorkspace = () => {
+        router.replace(safeNext);
+        router.refresh();
+      };
+
       if (isRegistering) {
         const { data, error } = await supabase.auth.signUp({
           ...credentials,
@@ -129,8 +134,8 @@ function LoginPageInner() {
         if (error) throw error;
         if (data.session) {
           await ensureProfile();
-          router.replace(safeNext);
-          router.refresh();
+          setMessage("Congratulations! You are successfully logged in.");
+          window.setTimeout(redirectToWorkspace, 900);
           return;
         }
         setMessage("Account created. Check your inbox to confirm your email, then sign in.");
@@ -140,8 +145,8 @@ function LoginPageInner() {
       const { error } = await supabase.auth.signInWithPassword(credentials);
       if (error) throw error;
       await ensureProfile();
-      router.replace(safeNext);
-      router.refresh();
+      setMessage("Congratulations! You are successfully logged in.");
+      window.setTimeout(redirectToWorkspace, 900);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not sign in. Please try again.");
     } finally {
