@@ -47,9 +47,10 @@ export async function streamGeminiResponse(
         }
       } catch (streamErr) {
         console.error("Gemini stream error:", streamErr);
-      } finally {
-        controller.close();
+        controller.error(streamErr);
+        return;
       }
+      controller.close();
     },
   });
 

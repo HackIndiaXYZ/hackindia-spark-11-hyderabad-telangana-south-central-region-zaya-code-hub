@@ -50,7 +50,7 @@ Key risks and regulatory considerations.
 ## 7. Opportunity Assessment
 Why NOW is the right time to enter this market. Score the opportunity 1-10 with justification.
 
-Be specific, use real data points and market figures where possible. Format everything in clean markdown.`;
+Be specific, use real data points and market figures where possible. Format everything in clean markdown. Keep prose concise: lead each section with a 1-2 sentence takeaway, then use tables, bullets, and quantified facts instead of long paragraphs.`;
 
   try {
     return await streamGeminiResponse(prompt);

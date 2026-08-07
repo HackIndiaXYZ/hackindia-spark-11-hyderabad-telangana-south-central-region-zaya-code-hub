@@ -68,7 +68,7 @@ Show months 1-12 with realistic ramp-up.
 ## 7. Key Financial Risks
 Top 5 financial risks and mitigation strategies.
 
-Use realistic, specific numbers. Format in clean markdown with actual dollar figures.`;
+Use realistic, specific numbers. Format in clean markdown with actual dollar figures. Prefer tables, assumptions, and short interpretation callouts over long explanatory paragraphs.`;
 
   try {
     return await streamGeminiResponse(prompt);

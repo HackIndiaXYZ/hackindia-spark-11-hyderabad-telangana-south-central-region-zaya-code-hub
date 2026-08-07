@@ -40,6 +40,16 @@ interface AgentOutputs {
   pitchDeck: string;
 }
 
+interface WritableFileStream {
+  write: (data: string) => Promise<void>;
+  close: () => Promise<void>;
+}
+
+interface DirectoryHandle {
+  getDirectoryHandle: (name: string, options?: { create?: boolean }) => Promise<DirectoryHandle>;
+  getFileHandle: (name: string, options?: { create?: boolean }) => Promise<{ createWritable: () => Promise<WritableFileStream> }>;
+}
+
 // ── Agent Configuration ────────────────────────────────
 const AGENTS: AgentConfig[] = [
   { key: "marketResearch",    label: "Market Research",   Icon: IconResearch, endpoint: "/api/agents/market-research",    color: "#4766D8" },
@@ -177,6 +187,7 @@ function BuildPageInner() {
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const abortRef = useRef<boolean>(false);
   const previewUrlRef = useRef<string | null>(null);
   const briefFileInputRef = useRef<HTMLInputElement>(null);
@@ -279,6 +290,9 @@ function BuildPageInner() {
         { idea, branding, strategy: businessStrategy },
         (text) => setOutputs((p) => ({ ...p, websiteGenerator: text }))
       );
+      if (!website.trim().startsWith("<!DOCTYPE html>") || !website.trim().endsWith("</html>")) {
+        throw new Error("The launch site generation ended early. Please run the package again to generate a complete HTML/CSS/JS file.");
+      }
       setWebsitePreview(website);
       setCompletedAgents((p) => new Set([...p, 4]));
       if (abortRef.current) return;
@@ -337,6 +351,50 @@ function BuildPageInner() {
       a.href = url;
       a.download = `${agent.key}.md`;
       a.click();
+    }
+  };
+
+  const handleExportFolder = async () => {
+    const picker = (window as Window & { showDirectoryPicker?: () => Promise<DirectoryHandle> }).showDirectoryPicker;
+    if (!picker) {
+      setError("Folder export is supported in Chromium-based browsers. Use Download full package as a fallback.");
+      return;
+    }
+
+    try {
+      setExportStatus("Choose a folder for your startup package…");
+      const destination = await picker();
+      const folder = await destination.getDirectoryHandle("zing-startup-package", { create: true });
+      const files: Array<{ path: string; content: string }> = AGENTS.map((agent, index) => ({
+        path: `${String(index + 1).padStart(2, "0")}-${agent.key === "websiteGenerator" ? "launch-site.html" : `${agent.key}.md`}`,
+        content: outputs[agent.key],
+      }));
+      const manifest = [
+        "# Zing Startup Package",
+        "",
+        `Startup brief: ${idea}`,
+        "",
+        "## Deliverables",
+        ...files.map(({ path }, index) => `- \`${path}\` — ${AGENTS[index].label}`),
+        "",
+        "All analyses are markdown files. `05-launch-site.html` is a self-contained HTML, CSS, and JavaScript landing page.",
+      ].join("\n");
+      files.unshift({ path: "README.md", content: manifest });
+
+      for (const file of files) {
+        const fileHandle = await folder.getFileHandle(file.path, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file.content);
+        await writable.close();
+      }
+      setExportStatus("Saved to zing-startup-package/");
+    } catch (exportError) {
+      if (exportError instanceof DOMException && exportError.name === "AbortError") {
+        setExportStatus(null);
+        return;
+      }
+      setError("Could not save the package folder. Please try again or use Download full package.");
+      setExportStatus(null);
     }
   };
 
@@ -472,6 +530,7 @@ function BuildPageInner() {
                     : completedAgents.size === AGENTS.length
                     ? <> <ActionIcon name="check" size={16} /> All deliverables are ready to review.</>
                     : "Agents paused"}
+                    {running && <span className="phase-loader" aria-label="Current phase is loading" />}
                 </div>
                 <div className="progress-pct">
                   {Math.round(progress * 100)}%
@@ -664,7 +723,11 @@ function BuildPageInner() {
                 >
                   <ActionIcon name="download" size={15} /> Download full package
                 </button>
+                <button className="btn btn-secondary" onClick={handleExportFolder}>
+                  <ActionIcon name="download" size={15} /> Export folder
+                </button>
               </div>
+              {exportStatus && <div className="export-status">{exportStatus}</div>}
             </div>
           )}
         </div>

@@ -33,6 +33,7 @@ REQUIREMENTS:
 4. Mobile-responsive design with usable navigation on small screens.
 5. Include real, lightweight JavaScript interactions: mobile navigation, FAQ accordion, smooth section navigation, and one additional interaction appropriate to the product (such as a pricing toggle, product demo state, or form validation).
 6. Professional, bespoke design — avoid generic gradients, template-like layouts, and emoji icons.
+7. Keep the implementation focused enough to finish in one response: use concise, reusable CSS and aim for 350-550 lines total. Never omit sections or close tags to save space.
 
 SECTIONS TO INCLUDE:
 - Hero section with headline, subtitle, CTA buttons
@@ -49,10 +50,10 @@ DESIGN REQUIREMENTS:
 - Accessible color contrast, visible keyboard focus states, and semantic HTML
 - Mobile-first responsive CSS
 
-OUTPUT ONLY THE COMPLETE HTML CODE. Start with <!DOCTYPE html> and end with </html>. No markdown code fences, no explanation — just pure HTML.`;
+OUTPUT ONLY THE COMPLETE HTML CODE. Start with <!DOCTYPE html> and end with </html>. Before finishing, verify internally that every required section, the <style> tag, the <script> tag, and the closing </html> tag are present. No markdown code fences, no explanation — just pure HTML.`;
 
   try {
-    return await streamGeminiResponse(prompt, { maxOutputTokens: 16384 });
+    return await streamGeminiResponse(prompt, { maxOutputTokens: 32768 });
   } catch (err: unknown) {
     console.error("Website Generator Agent error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

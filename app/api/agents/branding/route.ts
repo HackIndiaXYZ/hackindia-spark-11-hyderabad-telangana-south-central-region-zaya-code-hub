@@ -78,7 +78,7 @@ Show how the brand would appear on:
 - Email signature
 - LinkedIn company description
 
-Make it memorable, differentiated, and aligned with the market opportunity.`;
+Make it memorable, differentiated, and aligned with the market opportunity. Use compact tables, palettes, examples, and bullet frameworks; avoid long narrative paragraphs.`;
 
   try {
     return await streamGeminiResponse(prompt);

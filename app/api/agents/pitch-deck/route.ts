@@ -127,7 +127,7 @@ Include advisors if relevant.
 ## Appendix: Key Metrics Dashboard
 Include 6 key metrics you'll report to investors monthly.
 
-Make this compelling, specific, and investor-ready. Use real-sounding numbers and market references.`;
+Make this compelling, specific, and investor-ready. Use real-sounding numbers and market references. Keep every slide scannable: use 3-5 concise bullets, tables, and speaker-note style insights rather than dense paragraphs.`;
 
   try {
     return await streamGeminiResponse(prompt);

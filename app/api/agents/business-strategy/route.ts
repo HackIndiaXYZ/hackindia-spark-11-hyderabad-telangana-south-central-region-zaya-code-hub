@@ -52,7 +52,7 @@ Define the 5 most important metrics to track for this business.
 ## 7. Strategic Priorities (First 90 Days)
 Top 10 action items in priority order.
 
-Format in clean, detailed markdown with specific, actionable insights.`;
+Format in clean, detailed markdown with specific, actionable insights. Avoid essay-style paragraphs: use concise decision statements, tables, ordered phases, and bullet lists that a founder can act on immediately.`;
 
   try {
     return await streamGeminiResponse(prompt);
