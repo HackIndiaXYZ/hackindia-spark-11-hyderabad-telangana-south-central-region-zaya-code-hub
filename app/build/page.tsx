@@ -6,6 +6,7 @@ import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Navbar } from "@/components/navbar";
+import { createLocalProject, loadLocalProjects, mergeProjects, normalizeProject, storeLocalProject } from "@/lib/projects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   IconBrand,
@@ -72,9 +73,12 @@ type AccountUser = {
 
 type SavedProject = {
   id: string;
+  user_id?: string;
   idea: string;
   title: string | null;
   created_at: string;
+  updated_at?: string;
+  deliverables?: Record<string, string> | null;
 };
 
 // ── Agent Configuration ────────────────────────────────
@@ -471,24 +475,30 @@ function BuildPageInner() {
           updated_at: new Date().toISOString(),
         });
 
-        let projects: SavedProject[] = [];
+        const localProjects = loadLocalProjects(user.id);
+        let projects: SavedProject[] = localProjects;
         const { data: firstProjectsTry, error: projectsError } = await supabase
           .from("projects")
-          .select("id, idea, title, created_at")
+          .select("id, user_id, idea, title, created_at")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false })
           .limit(6);
 
         if (projectsError && projectsError.message.includes("title")) {
           const { data: fallbackProjects, error: fallbackError } = await supabase
             .from("projects")
-            .select("id, idea, created_at")
+            .select("id, user_id, idea, created_at")
+            .eq("user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(6);
           if (!fallbackError && fallbackProjects) {
-            projects = fallbackProjects.map((p: any) => ({ ...p, title: null }));
+            projects = mergeProjects(
+              fallbackProjects.map((project: Record<string, unknown>) => normalizeProject({ ...project, title: null })),
+              localProjects
+            ).slice(0, 6);
           }
         } else if (!projectsError && firstProjectsTry) {
-          projects = firstProjectsTry;
+          projects = mergeProjects(firstProjectsTry.map(normalizeProject), localProjects).slice(0, 6);
         }
 
         if (mounted) setRecentProjects(projects);
@@ -511,24 +521,36 @@ function BuildPageInner() {
                 const { data: firstSaveTry, error: saveError } = await supabase
                   .from("projects")
                   .insert(payload)
-                  .select("id, idea, title, created_at")
+                  .select("id, user_id, idea, title, created_at")
                   .single();
 
                 if (saveError) {
-                  const fallbackPayload = { ...payload };
-                  delete (fallbackPayload as any).title;
-                  delete (fallbackPayload as any).updated_at;
+                  const fallbackPayload = {
+                    user_id: payload.user_id,
+                    idea: payload.idea,
+                    deliverables: payload.deliverables,
+                  };
                   const { data: fallbackSaveTry, error: fallbackError } = await supabase
                     .from("projects")
                     .insert(fallbackPayload)
-                    .select("id, idea, created_at")
+                    .select("id, user_id, idea, created_at")
                     .single();
                   if (!fallbackError && fallbackSaveTry) {
-                    savedRes = { ...fallbackSaveTry, title: null };
+                    savedRes = normalizeProject({ ...fallbackSaveTry, title: null, deliverables: guestData.outputs });
                   }
                 } else if (firstSaveTry) {
-                  savedRes = firstSaveTry;
+                  savedRes = normalizeProject({ ...firstSaveTry, deliverables: guestData.outputs });
                 }
+
+                if (!savedRes) {
+                  savedRes = createLocalProject({
+                    user_id: user.id,
+                    idea: guestData.idea,
+                    title: titleFromIdea(guestData.idea),
+                    deliverables: guestData.outputs,
+                  });
+                }
+                storeLocalProject(savedRes);
 
                 if (savedRes) {
                   if (mounted) {
@@ -564,33 +586,37 @@ function BuildPageInner() {
         const projectId = searchParams.get("project");
         if (projectId) {
           let project = null;
+          const localProject = loadLocalProjects(user.id).find((item) => item.id === projectId) ?? null;
           const { data: firstProjectTry, error: projectError } = await supabase
             .from("projects")
-            .select("id, idea, title, deliverables")
+            .select("id, user_id, idea, title, deliverables")
             .eq("id", projectId)
+            .eq("user_id", user.id)
             .maybeSingle();
 
           if (projectError && projectError.message.includes("title")) {
             const { data: fallbackProject, error: fallbackError } = await supabase
               .from("projects")
-              .select("id, idea, deliverables")
+              .select("id, user_id, idea, deliverables")
               .eq("id", projectId)
+              .eq("user_id", user.id)
               .maybeSingle();
             if (fallbackError) throw fallbackError;
-            project = fallbackProject ? { ...fallbackProject, title: null } : null;
+            project = fallbackProject ? normalizeProject({ ...fallbackProject, title: null }) : localProject;
           } else if (projectError) {
-            throw projectError;
+            if (!localProject) throw projectError;
+            project = localProject;
           } else {
-            project = firstProjectTry;
+            project = firstProjectTry ? normalizeProject(firstProjectTry) : localProject;
           }
           if (project && mounted) {
-            const deliverables = (project.deliverables ?? {}) as Partial<AgentOutputs>;
+            const deliverables = (project.deliverables ?? {}) as Partial<AgentOutputs> & { website?: string };
             const nextOutputs: AgentOutputs = {
               marketResearch: deliverables.marketResearch ?? "",
               businessStrategy: deliverables.businessStrategy ?? "",
               financialPlanning: deliverables.financialPlanning ?? "",
               branding: deliverables.branding ?? "",
-              websiteGenerator: deliverables.websiteGenerator ?? (deliverables as any).website ?? "",
+              websiteGenerator: deliverables.websiteGenerator ?? deliverables.website ?? "",
               pitchDeck: deliverables.pitchDeck ?? "",
             };
             setIdea(project.idea);
@@ -821,7 +847,8 @@ function BuildPageInner() {
               .from("projects")
               .update(payload)
               .eq("id", activeProjectId)
-              .select("id, idea, title, created_at")
+              .eq("user_id", user.id)
+              .select("id, user_id, idea, title, created_at")
               .single();
             firstSaveTry = updateRes;
             saveError = updateErr;
@@ -829,39 +856,43 @@ function BuildPageInner() {
             const { data: insertRes, error: insertErr } = await supabase
               .from("projects")
               .insert(payload)
-              .select("id, idea, title, created_at")
+              .select("id, user_id, idea, title, created_at")
               .single();
             firstSaveTry = insertRes;
             saveError = insertErr;
           }
 
           if (saveError) {
-            const fallbackPayload = { ...payload };
-            delete (fallbackPayload as any).title;
-            delete (fallbackPayload as any).updated_at;
+            const fallbackPayload = {
+              user_id: payload.user_id,
+              idea: payload.idea,
+              deliverables: payload.deliverables,
+            };
             if (activeProjectId) {
               const { data: fallbackSaveTry, error: fallbackError } = await supabase
                 .from("projects")
                 .update(fallbackPayload)
                 .eq("id", activeProjectId)
-                .select("id, idea, created_at")
+                .eq("user_id", user.id)
+                .select("id, user_id, idea, created_at")
                 .single();
               if (fallbackError) throw fallbackError;
-              saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+              saved = fallbackSaveTry ? normalizeProject({ ...fallbackSaveTry, title: null, deliverables: payload.deliverables }) : null;
             } else {
               const { data: fallbackSaveTry, error: fallbackError } = await supabase
                 .from("projects")
                 .insert(fallbackPayload)
-                .select("id, idea, created_at")
+                .select("id, user_id, idea, created_at")
                 .single();
               if (fallbackError) throw fallbackError;
-              saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+              saved = fallbackSaveTry ? normalizeProject({ ...fallbackSaveTry, title: null, deliverables: payload.deliverables }) : null;
             }
           } else {
-            saved = firstSaveTry;
+            saved = firstSaveTry ? normalizeProject({ ...firstSaveTry, deliverables: payload.deliverables }) : null;
           }
 
           if (saved) {
+            storeLocalProject(saved);
             setActiveProjectId(saved.id);
             setRecentProjects((current) => [saved!, ...current.filter((item) => item.id !== saved!.id)].slice(0, 6));
             setProjectSaveStatus("Saved privately to My projects.");
@@ -869,7 +900,28 @@ function BuildPageInner() {
         }
       } catch (saveError) {
         console.error("Project save error:", saveError);
-        setProjectSaveStatus("Package generated, but it could not be saved. Run the Supabase schema setup, then try again.");
+        if (!account) {
+          setProjectSaveStatus("Package generated, but it could not be saved. Run the Supabase schema setup, then try again.");
+          return;
+        }
+        const localProject = createLocalProject({
+          id: activeProjectId,
+          user_id: account.id,
+          idea,
+          title: titleFromIdea(idea),
+          deliverables: {
+            marketResearch,
+            businessStrategy,
+            financialPlanning,
+            branding,
+            websiteGenerator: website,
+            pitchDeck,
+          },
+        });
+        storeLocalProject(localProject);
+        setActiveProjectId(localProject.id);
+        setRecentProjects((current) => [localProject, ...current.filter((item) => item.id !== localProject.id)].slice(0, 6));
+        setProjectSaveStatus("Saved on this device. Run the Supabase schema setup to sync projects across logins.");
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "An unexpected error occurred";

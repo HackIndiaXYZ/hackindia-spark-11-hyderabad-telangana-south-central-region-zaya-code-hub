@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { deleteLocalProject, loadLocalProjects, mergeProjects, normalizeProject, projectErrorMessage } from "@/lib/projects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type Project = {
@@ -34,6 +35,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProjects() {
@@ -46,28 +48,42 @@ export default function ProjectsPage() {
           router.replace("/login?next=/projects");
           return;
         }
+        setUserId(user.id);
         setEmail(user.email ?? null);
 
-        let projectList: Project[] = [];
+        const localProjects = loadLocalProjects(user.id);
+        let projectList: Project[] = localProjects;
         const { data: firstTry, error: queryError } = await supabase
           .from("projects")
           .select("id, idea, title, created_at, updated_at, deliverables")
+          .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (queryError) {
           const { data: fallbackTry, error: fallbackError } = await supabase
             .from("projects")
-            .select("id, idea, created_at, deliverables")
+            .select("id, user_id, idea, created_at, deliverables")
+            .eq("user_id", user.id)
             .order("created_at", { ascending: false });
-          if (fallbackError) throw fallbackError;
-          projectList = (fallbackTry ?? []).map((p: any) => ({ ...p, title: null, updated_at: p.created_at }));
+          if (fallbackError) {
+            if (projectList.length) {
+              setError("Showing locally saved projects. Supabase storage is not reachable right now.");
+            } else {
+              throw fallbackError;
+            }
+          } else {
+            projectList = mergeProjects(
+              (fallbackTry ?? []).map((project: Record<string, unknown>) => normalizeProject({ ...project, title: null })),
+              localProjects
+            );
+          }
         } else {
-          projectList = firstTry ?? [];
+          projectList = mergeProjects((firstTry ?? []).map(normalizeProject), localProjects);
         }
 
         setProjects(projectList);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : "Could not load projects.");
+        setError(projectErrorMessage(loadError, "Could not load projects."));
       } finally {
         setLoading(false);
       }
@@ -80,11 +96,14 @@ export default function ProjectsPage() {
     setDeletingId(projectId);
     try {
       const supabase = getSupabaseBrowserClient();
-      const { error: deleteError } = await supabase.from("projects").delete().eq("id", projectId);
-      if (deleteError) throw deleteError;
+      const hadLocalCopy = Boolean(userId && loadLocalProjects(userId).some((project) => project.id === projectId));
+      const query = supabase.from("projects").delete().eq("id", projectId);
+      const { error: deleteError } = userId ? await query.eq("user_id", userId) : await query;
+      if (deleteError && !hadLocalCopy) throw deleteError;
+      if (userId) deleteLocalProject(userId, projectId);
       setProjects((current) => current.filter((project) => project.id !== projectId));
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Could not delete project.");
+      setError(projectErrorMessage(deleteError, "Could not delete project."));
     } finally {
       setDeletingId(null);
     }
