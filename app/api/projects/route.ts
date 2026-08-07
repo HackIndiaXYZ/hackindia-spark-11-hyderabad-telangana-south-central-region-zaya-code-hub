@@ -10,6 +10,10 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 export async function GET() {
   try {
     const supabase = await getSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json({ projects: [], warning: "Supabase is not configured in deployment. Falling back to local-only mode." }, { status: 200 });
+    }
+
     const {
       data: { user },
       error: authError,
@@ -36,6 +40,10 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const supabase = await getSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json({ message: "Supabase is not configured in deployment. Project save was skipped." }, { status: 200 });
+    }
+
     const {
       data: { user },
       error: authError,

@@ -6,7 +6,7 @@ export async function getSupabaseServerClient() {
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!url || !publishableKey) {
-    throw new Error("Supabase is not configured.");
+    return null;
   }
 
   const cookieStore = await cookies();
