@@ -9,7 +9,7 @@ import { Navbar } from "@/components/navbar";
 import { createLocalProject, loadLocalProjects, saveLocalProjects, storeLocalProject } from "@/lib/projects";
 import { loadUserProjects, normalizeDeliverables, upsertRemoteProject, fetchRemoteProjects } from "@/lib/project-sync";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { MutagentOrchestrator } from "@/lib/mutagent-orchestrator";
+import { MutagentOrchestrator, type LifecycleStage, type ScorecardEntry } from "@/lib/mutagent-orchestrator";
 import {
   IconBrand,
   IconFinance,
@@ -269,6 +269,11 @@ function BuildPageInner() {
   const [exportStatus, setExportStatus] = useState<string | null>(null);
   const [traceRunId, setTraceRunId] = useState<string | null>(null);
   const [traceEntries, setTraceEntries] = useState<TraceEntry[]>([]);
+  const [evaluationSummary, setEvaluationSummary] = useState<string | null>(null);
+  const [scorecard, setScorecard] = useState<ScorecardEntry[]>([]);
+  const [lifecycleStage, setLifecycleStage] = useState<LifecycleStage | null>(null);
+  const [approvalMessage, setApprovalMessage] = useState<string | null>(null);
+  const [approvalPending, setApprovalPending] = useState(false);
   const [projectSaveStatus, setProjectSaveStatus] = useState<string | null>(null);
   const [account, setAccount] = useState<AccountUser | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -592,6 +597,11 @@ function BuildPageInner() {
     const runId = crypto.randomUUID();
     setTraceRunId(runId);
     setTraceEntries([]);
+    setEvaluationSummary(null);
+    setScorecard([]);
+    setLifecycleStage(null);
+    setApprovalMessage(null);
+    setApprovalPending(false);
     const updateTrace = (agent: AgentKey) => (status: TraceStatus, outputChars?: number, durationMs?: number, error?: string) => {
       setTraceEntries((current) => {
         if (status === "started") return [...current, { agent, status, startedAt: new Date().toISOString() }];
@@ -607,11 +617,25 @@ function BuildPageInner() {
     let businessStrategy = "";
     let financialPlanning = "";
     let branding = "";
-    let pitchDeck = "";
 
     try {
       const orchestrator = new MutagentOrchestrator(runId);
       const results = await orchestrator.executePipeline(idea, {
+        onLifecycleStage: (stage, message) => {
+          setLifecycleStage(stage);
+          if (message) setEvaluationSummary(message);
+        },
+        onScorecardUpdate: (nextScorecard) => setScorecard(nextScorecard),
+        requestApproval: async (message) => {
+          setApprovalPending(true);
+          setApprovalMessage(message);
+          return new Promise<boolean>((resolve) => {
+            const confirmRetry = window.confirm(message);
+            setApprovalPending(false);
+            setApprovalMessage(null);
+            resolve(confirmRetry);
+          });
+        },
         onAgentStart: (idx, key) => {
           setCurrentAgent(idx);
           setActiveTab(key);
@@ -646,8 +670,13 @@ function BuildPageInner() {
         financialPlanning,
         branding,
         website,
-        pitchDeck
+        pitchDeck,
+        evaluation,
       } = results;
+
+      if (evaluation) {
+        setEvaluationSummary(evaluation.passed ? evaluation.summary : `${evaluation.summary}\n\n${evaluation.issues.join("\n")}`);
+      }
 
       try {
         const supabase = getSupabaseBrowserClient();
@@ -1279,6 +1308,42 @@ function BuildPageInner() {
                             {t.error && <div className="trace-err">{t.error}</div>}
                           </div>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(evaluationSummary || scorecard.length > 0 || lifecycleStage) && (
+                    <div className="mutagent-trace-panel" style={{ marginTop: 16 }}>
+                      <div className="mutagent-trace-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "16px" }}>🧪</span>
+                          <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Mutagent Scorecard & Lifecycle</h3>
+                        </div>
+                      </div>
+                      <div style={{ padding: "12px 14px", fontSize: 13, lineHeight: 1.6 }}>
+                        {lifecycleStage && (
+                          <div style={{ marginBottom: 10, fontWeight: 600 }}>
+                            Stage: <span style={{ textTransform: "capitalize" }}>{lifecycleStage}</span>
+                          </div>
+                        )}
+                        {evaluationSummary && (
+                          <div style={{ whiteSpace: "pre-wrap", marginBottom: 10 }}>{evaluationSummary}</div>
+                        )}
+                        {scorecard.length > 0 && (
+                          <div style={{ display: "grid", gap: 8 }}>
+                            {scorecard.map((entry) => (
+                              <div key={entry.agent} style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: 8 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                                  <strong>{entry.label}</strong>
+                                  <span>{entry.score}% · {entry.passed ? "PASS" : "RETRY"}</span>
+                                </div>
+                                <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+                                  Attempts: {entry.attempts} · {entry.issues.length > 0 ? entry.issues.join(" • ") : "No critical issues detected"}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

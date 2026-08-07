@@ -5,11 +5,13 @@ import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
 
-  let idea = "", marketResearch = "";
+  let idea = "", marketResearch = "", revisionNotes = "", currentOutput = "";
   try {
     const body = await req.json();
     idea = body.idea || "";
     marketResearch = body.marketResearch || "";
+    revisionNotes = body.revisionNotes || "";
+    currentOutput = body.currentOutput || "";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -20,6 +22,8 @@ export async function POST(req: NextRequest) {
 
 **Market Research Summary:**
 ${marketResearch ? marketResearch.substring(0, 1500) : "Market research not yet available — proceed with general analysis."}
+${revisionNotes ? `\n**Revision Notes:** ${revisionNotes}` : ""}
+${currentOutput ? `\n**Current Draft to Improve:** ${currentOutput.substring(0, 2000)}` : ""}
 
 Provide a detailed business strategy covering:
 

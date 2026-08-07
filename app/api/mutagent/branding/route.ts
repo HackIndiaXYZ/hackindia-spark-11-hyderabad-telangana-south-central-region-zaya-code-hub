@@ -5,11 +5,13 @@ import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
 
-  let idea = "", strategy = "";
+  let idea = "", strategy = "", revisionNotes = "", currentOutput = "";
   try {
     const body = await req.json();
     idea = body.idea || "";
     strategy = body.strategy || "";
+    revisionNotes = body.revisionNotes || "";
+    currentOutput = body.currentOutput || "";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -20,6 +22,8 @@ export async function POST(req: NextRequest) {
 
 **Business Context:**
 ${strategy ? strategy.substring(0, 800) : "Early-stage tech startup."}
+${revisionNotes ? `\n**Revision Notes:** ${revisionNotes}` : ""}
+${currentOutput ? `\n**Current Draft to Improve:** ${currentOutput.substring(0, 2000)}` : ""}
 
 Create a comprehensive brand identity document:
 

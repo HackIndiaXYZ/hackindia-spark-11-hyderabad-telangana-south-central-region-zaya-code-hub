@@ -5,12 +5,14 @@ import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
 
-  let idea = "", branding = "", strategy = "";
+  let idea = "", branding = "", strategy = "", revisionNotes = "", currentOutput = "";
   try {
     const body = await req.json();
     idea = body.idea || "";
     branding = body.branding || "";
     strategy = body.strategy || "";
+    revisionNotes = body.revisionNotes || "";
+    currentOutput = body.currentOutput || "";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -24,6 +26,8 @@ ${branding ? branding.substring(0, 600) : "Modern tech startup with professional
 
 **Strategy Context:**
 ${strategy ? strategy.substring(0, 400) : ""}
+${revisionNotes ? `\n**Revision Notes:** ${revisionNotes}` : ""}
+${currentOutput ? `\n**Current Draft to Improve:** ${currentOutput.substring(0, 2000)}` : ""}
 
 Generate a COMPLETE, single-file interactive landing page with:
 

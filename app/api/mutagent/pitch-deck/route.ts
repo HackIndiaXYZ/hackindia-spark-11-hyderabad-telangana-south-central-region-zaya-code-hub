@@ -5,13 +5,15 @@ import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
 
-  let idea = "", strategy = "", financials = "", branding = "";
+  let idea = "", strategy = "", financials = "", branding = "", revisionNotes = "", currentOutput = "";
   try {
     const body = await req.json();
     idea = body.idea || "";
     strategy = body.strategy || "";
     financials = body.financials || "";
     branding = body.branding || "";
+    revisionNotes = body.revisionNotes || "";
+    currentOutput = body.currentOutput || "";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -28,6 +30,8 @@ ${financials ? financials.substring(0, 500) : "Pre-revenue, seeking seed funding
 
 **Brand Summary:**
 ${branding ? branding.substring(0, 300) : ""}
+${revisionNotes ? `\n**Revision Notes:** ${revisionNotes}` : ""}
+${currentOutput ? `\n**Current Draft to Improve:** ${currentOutput.substring(0, 2000)}` : ""}
 
 Create a complete pitch deck narrative (10 slides):
 

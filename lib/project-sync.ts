@@ -51,7 +51,7 @@ export async function fetchRemoteProjects(
       return {
         projects: (data ?? []).map((project) =>
           normalizeProject({
-            ...(project as Record<string, unknown>),
+            ...(project as unknown as Record<string, unknown>),
             deliverables: normalizeDeliverables(
               (project as { deliverables?: Record<string, string> }).deliverables
             ),

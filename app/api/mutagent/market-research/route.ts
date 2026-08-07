@@ -5,11 +5,13 @@ import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
 
-  let idea = "", context = "";
+  let idea = "", context = "", revisionNotes = "", currentOutput = "";
   try {
     const body = await req.json();
     idea = body.idea || "";
     context = body.context || "";
+    revisionNotes = body.revisionNotes || "";
+    currentOutput = body.currentOutput || "";
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
@@ -19,6 +21,8 @@ export async function POST(req: NextRequest) {
 **Startup Idea:** ${idea}
 
 ${context ? `**Additional Context:** ${context}` : ""}
+${revisionNotes ? `**Revision Notes:** ${revisionNotes}` : ""}
+${currentOutput ? `**Current Draft to Improve:** ${currentOutput.substring(0, 2000)}` : ""}
 
 Please provide a detailed market research report covering:
 
