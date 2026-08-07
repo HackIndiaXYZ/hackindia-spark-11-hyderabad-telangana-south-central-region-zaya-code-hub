@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { Navbar } from "@/components/navbar";
 import {
   IconResearch,
@@ -188,8 +189,8 @@ export default function HomePage() {
 
       <footer className="site-footer">
         <div className="container site-footer-inner">
-          <span>Launchpad</span>
-          <span>Powered by Gemini 2.5 Flash</span>
+          <Image className="footer-zing-logo" src="/WhatsApp_Image_2026-08-07_at_13.37.59-removebg-preview.png" alt="Zing" width={68} height={25} />
+          <span>Developed by Zaya Code Hub</span>
         </div>
       </footer>
     </>

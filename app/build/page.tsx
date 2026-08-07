@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, Suspense, type ComponentType, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Navbar } from "@/components/navbar";
@@ -672,12 +673,8 @@ function BuildPageInner() {
       {/* Footer */}
       <footer className="site-footer">
         <div className="container site-footer-inner">
-          <span><strong>Launchpad</strong> — Powered by{" "}
-          <a href="https://ai.google.dev" target="_blank" rel="noreferrer">
-            Google Gemini
-          </a>{" "}
-          · Your on-demand startup team</span>
-          <span>Research · Strategy · Brand · Launch</span>
+          <span><Image className="footer-zing-logo" src="/WhatsApp_Image_2026-08-07_at_13.37.59-removebg-preview.png" alt="Zing" width={68} height={25} /> — Developed by Zaya Code Hub · AI startup intelligence</span>
+          <span>A Zaya Code Hub product</span>
         </div>
       </footer>
     </>

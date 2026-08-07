@@ -84,6 +84,12 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
 }
 .site-logo { color: var(--ink); }
+.zing-logo-image {
+  display: block;
+  width: auto;
+  height: 36px;
+  object-fit: contain;
+}
 .wordmark {
   display: inline-flex;
   align-items: center;
@@ -463,6 +469,14 @@ a { color: inherit; text-decoration: none; }
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+.footer-zing-logo {
+  display: inline-block;
+  width: auto;
+  height: 25px;
+  margin-right: 5px;
+  vertical-align: middle;
+  object-fit: contain;
 }
 
 /* ── Workspace (build page) ── */
