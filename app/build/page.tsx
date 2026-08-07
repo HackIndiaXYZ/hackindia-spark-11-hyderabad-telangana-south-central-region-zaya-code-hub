@@ -1,9 +1,17 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, type ComponentType, type ChangeEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Navbar } from "@/components/navbar";
+import {
+  IconBrand,
+  IconFinance,
+  IconPitch,
+  IconResearch,
+  IconStrategy,
+  IconWebsite,
+} from "@/components/agent-icons";
 
 // ── Types ──────────────────────────────────────────────
 type AgentKey =
@@ -17,7 +25,7 @@ type AgentKey =
 interface AgentConfig {
   key: AgentKey;
   label: string;
-  icon: string;
+  Icon: ComponentType<{ className?: string; size?: number }>;
   endpoint: string;
   color: string;
 }
@@ -33,13 +41,67 @@ interface AgentOutputs {
 
 // ── Agent Configuration ────────────────────────────────
 const AGENTS: AgentConfig[] = [
-  { key: "marketResearch",    label: "Market Research",   icon: "🔍", endpoint: "/api/agents/market-research",    color: "#3B82F6" },
-  { key: "businessStrategy",  label: "Business Strategy", icon: "♟️", endpoint: "/api/agents/business-strategy",  color: "#8B5CF6" },
-  { key: "financialPlanning", label: "Financial Planning",icon: "💰", endpoint: "/api/agents/financial-planning", color: "#10B981" },
-  { key: "branding",          label: "Branding",          icon: "🎨", endpoint: "/api/agents/branding",           color: "#F59E0B" },
-  { key: "websiteGenerator",  label: "Website Generator", icon: "🌐", endpoint: "/api/agents/website-generator",  color: "#EC4899" },
-  { key: "pitchDeck",         label: "Pitch Deck",        icon: "📊", endpoint: "/api/agents/pitch-deck",         color: "#D97757" },
+  { key: "marketResearch",    label: "Market Research",   Icon: IconResearch, endpoint: "/api/agents/market-research",    color: "#4766D8" },
+  { key: "businessStrategy",  label: "Business Strategy", Icon: IconStrategy, endpoint: "/api/agents/business-strategy",  color: "#805AD5" },
+  { key: "financialPlanning", label: "Financial Planning",Icon: IconFinance, endpoint: "/api/agents/financial-planning", color: "#16805D" },
+  { key: "branding",          label: "Brand Identity",    Icon: IconBrand, endpoint: "/api/agents/branding",           color: "#B66A1D" },
+  { key: "websiteGenerator",  label: "Launch Site",       Icon: IconWebsite, endpoint: "/api/agents/website-generator",  color: "#A24D7C" },
+  { key: "pitchDeck",         label: "Investor Deck",     Icon: IconPitch, endpoint: "/api/agents/pitch-deck",         color: "#A44A3D" },
 ];
+
+function ActionIcon({ name, size = 16 }: { name: "check" | "copy" | "download" | "stop" | "reset" | "alert" | "bolt" | "upload" | "arrowUp"; size?: number }) {
+  const paths = {
+    check: <path d="m5 12 4.2 4.2L19 6.7" />,
+    copy: <><rect x="9" y="9" width="10" height="10" rx="2" /><path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /></>,
+    download: <><path d="M12 3v11" /><path d="m8 10 4 4 4-4" /><path d="M5 19h14" /></>,
+    stop: <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none" />,
+    reset: <><path d="M20 11a8 8 0 1 1-2.3-5.7" /><path d="M20 4v7h-7" /></>,
+    alert: <><path d="M12 3 21 20H3L12 3Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></>,
+    bolt: <path d="m13 2-8 12h6l-1 8 8-12h-6l1-8Z" />,
+    upload: <><path d="M12 16V4" /><path d="m8 8 4-4 4 4" /><path d="M5 15v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" /></>,
+    arrowUp: <><path d="M12 19V5" /><path d="m6 11 6-6 6 6" /></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{paths[name]}</svg>;
+}
+
+const AGENT_ACTIVITY: Record<AgentKey, { working: string; upcoming: string; detail: string; tasks: string[] }> = {
+  marketResearch: {
+    working: "Mapping the market before you make a move.",
+    upcoming: "Your research room is getting ready.",
+    detail: "We are sizing the opportunity, scanning competitors, and surfacing the customer signals that matter.",
+    tasks: ["Sizing the opportunity", "Scanning competitor moves", "Finding customer pain points"],
+  },
+  businessStrategy: {
+    working: "Turning insight into a decisive strategy.",
+    upcoming: "Your strategy studio is up next.",
+    detail: "We are defining the wedge, positioning, and go-to-market choices that give this idea momentum.",
+    tasks: ["Defining your market wedge", "Pressure-testing the business model", "Shaping the go-to-market plan"],
+  },
+  financialPlanning: {
+    working: "Putting the numbers behind the ambition.",
+    upcoming: "Your finance desk is queued next.",
+    detail: "We are translating the strategy into pricing, unit economics, milestones, and a credible runway.",
+    tasks: ["Designing pricing logic", "Modeling unit economics", "Mapping milestones and runway"],
+  },
+  branding: {
+    working: "Giving the company a voice people remember.",
+    upcoming: "Your brand atelier is warming up.",
+    detail: "We are creating a name direction, verbal identity, and visual territory built around the strategy.",
+    tasks: ["Exploring naming territory", "Defining the brand voice", "Building a visual direction"],
+  },
+  websiteGenerator: {
+    working: "Turning the story into a launch-ready front door.",
+    upcoming: "Your launch page is being prepared.",
+    detail: "We are composing the value proposition, conversion flow, and page structure for your first landing page.",
+    tasks: ["Writing the conversion narrative", "Structuring the landing page", "Preparing deployable HTML"],
+  },
+  pitchDeck: {
+    working: "Packaging the story investors need to see.",
+    upcoming: "Your investor narrative is the final step.",
+    detail: "We are bringing the insight, strategy, financials, and brand into one concise fundraising narrative.",
+    tasks: ["Framing the investment case", "Sequencing the narrative", "Clarifying the funding ask"],
+  },
+};
 
 const EXAMPLES = [
   "AI-based agriculture startup using drone technology",
@@ -115,18 +177,38 @@ function BuildPageInner() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<boolean>(false);
+  const previewUrlRef = useRef<string | null>(null);
+  const briefFileInputRef = useRef<HTMLInputElement>(null);
 
   const progress = completedAgents.size / AGENTS.length;
 
-  // Generate preview URL when website is ready
+  // Release the generated preview when this page unmounts.
   useEffect(() => {
-    if (outputs.websiteGenerator && outputs.websiteGenerator.includes("<!DOCTYPE html>")) {
-      const blob = new Blob([outputs.websiteGenerator], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    }
-  }, [outputs.websiteGenerator]);
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    };
+  }, []);
+
+  const setWebsitePreview = (html: string | null) => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+
+    const url = html && html.includes("<!DOCTYPE html>")
+      ? URL.createObjectURL(new Blob([html], { type: "text/html" }))
+      : null;
+
+    previewUrlRef.current = url;
+    setPreviewUrl(url);
+  };
+
+  const handleBriefUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => setIdea(String(reader.result || ""));
+    reader.readAsText(file);
+    event.target.value = "";
+  };
 
   const handleBuild = async () => {
     if (!idea.trim()) return;
@@ -134,6 +216,7 @@ function BuildPageInner() {
     setRunning(true);
     setError(null);
     setOutputs(EMPTY_OUTPUTS);
+    setWebsitePreview(null);
     setCompletedAgents(new Set());
     setCurrentAgent(0);
     setActiveTab("marketResearch");
@@ -190,11 +273,12 @@ function BuildPageInner() {
       // 5. Website Generator
       setCurrentAgent(4);
       setActiveTab("websiteGenerator");
-      await streamAgentOutput(
+      const website = await streamAgentOutput(
         "/api/agents/website-generator",
         { idea, branding, strategy: businessStrategy },
         (text) => setOutputs((p) => ({ ...p, websiteGenerator: text }))
       );
+      setWebsitePreview(website);
       setCompletedAgents((p) => new Set([...p, 4]));
       if (abortRef.current) return;
 
@@ -256,139 +340,123 @@ function BuildPageInner() {
   };
 
   const activeAgent = AGENTS.find((a) => a.key === activeTab)!;
+  const activeAgentIndex = AGENTS.findIndex((a) => a.key === activeTab);
   const activeOutput = outputs[activeTab];
   const isWebsiteTab = activeTab === "websiteGenerator";
+  const isUpcoming = running && activeAgentIndex > currentAgent;
+  const isActiveAgent = running && activeAgentIndex === currentAgent;
+  const activity = AGENT_ACTIVITY[activeTab];
+  const CurrentAgentIcon = currentAgent >= 0 ? AGENTS[currentAgent].Icon : null;
+  const ActiveAgentIcon = activeAgent.Icon;
 
   return (
     <>
-      {/* Navbar */}
-      <nav className="navbar">
-        <div className="navbar-inner">
-          <Link href="/" className="navbar-logo" style={{ textDecoration: "none" }}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="8" fill="currentColor" opacity="0.15" />
-              <path d="M7 14 L14 7 L21 14 L14 21 Z" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-              <circle cx="14" cy="14" r="3" fill="currentColor" />
-            </svg>
-            AI Startup Builder
-          </Link>
-          <div className="navbar-links">
-            <Link href="/" className="btn btn-ghost btn-sm">← Home</Link>
-          </div>
-        </div>
-      </nav>
+      <Navbar variant="build" />
 
-      <div className="builder-page">
+      <main className="workspace">
         <div className="container">
           {/* Header */}
-          <div className="builder-header">
-            <h1 className="builder-title">Build Your Startup</h1>
-            <p className="builder-sub">
-              Describe your idea → 6 AI agents generate your complete startup package
+          <div className="workspace-header">
+            <p className="eyebrow">Founder workspace</p>
+            <h1 className="workspace-title">Turn a sharp idea into a fundable company.</h1>
+            <p className="workspace-sub">
+              Your six-person AI venture team will turn one brief into the research, strategy, brand, website, and pitch you need to move.
             </p>
           </div>
 
           {/* Input Card */}
-          <div className="input-card">
-            <label className="input-label">Your Startup Idea</label>
-            <div className="input-wrapper">
+          <div className="compose-card composer-shell">
+            <div className="idea-field" data-active={idea.length > 0 || undefined}>
+              <span className="idea-field-icon"><ActionIcon name="bolt" size={18} /></span>
               <textarea
+                id="startup-idea"
                 className="idea-textarea"
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
-                placeholder="Describe your startup idea in detail... e.g. 'An AI-powered platform that helps farmers in India predict crop diseases using drone imagery and machine learning'"
+                placeholder="Describe the startup you want to build"
                 disabled={running}
                 rows={4}
               />
-            </div>
-
-            <div className="example-chips">
-              <span style={{ fontSize: 12, color: "var(--charcoal-30)", alignSelf: "center" }}>Try:</span>
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex}
-                  className="example-chip"
-                  onClick={() => setIdea(ex)}
+              <div className="idea-field-actions">
+                <input
+                  ref={briefFileInputRef}
+                  className="brief-file-input"
+                  type="file"
+                  accept=".txt,.md,text/plain,text/markdown"
+                  onChange={handleBriefUpload}
                   disabled={running}
-                >
-                  {ex}
+                />
+                <button className="upload-brief" type="button" onClick={() => briefFileInputRef.current?.click()} disabled={running}>
+                  <ActionIcon name="upload" size={18} />
+                  Upload brief
                 </button>
-              ))}
-            </div>
-
-            <div className="input-footer">
-              <div className="agents-pills">
-                {AGENTS.map((a, i) => (
-                  <div key={a.key} className="agent-pill">
-                    <div
-                      className="dot"
-                      style={{
-                        background: completedAgents.has(i)
-                          ? "#22c55e"
-                          : currentAgent === i
-                          ? a.color
-                          : "var(--charcoal-30)",
-                      }}
-                    />
-                    {a.icon} {a.label}
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: "flex", gap: 10 }}>
-                {running && (
-                  <button className="btn btn-secondary" onClick={handleStop}>
-                    ⏹ Stop
-                  </button>
-                )}
+                <span className="idea-count">{idea.length ? `${idea.length} characters` : "Add detail for stronger output"}</span>
                 <button
-                  className="btn btn-primary btn-lg"
+                  className="prompt-send"
+                  type="button"
                   onClick={handleBuild}
                   disabled={running || !idea.trim()}
                 >
-                  {running ? (
-                    <>
-                      <span className="stream-cursor" style={{ marginRight: 4 }} />
-                      Generating...
-                    </>
-                  ) : (
-                    "🚀 Generate Startup Package"
-                  )}
+                  {running ? <span className="stream-cursor" /> : <ActionIcon name="arrowUp" size={20} />}
+                  {running ? "Building" : "Send"}
                 </button>
               </div>
+            </div>
+
+            <div className="composer-groups">
+              <div className="composer-group">
+                <span className="composer-group-label">Try a prompt</span>
+                <div className="example-list floating-suggestions">
+                  {EXAMPLES.map((ex) => (
+                    <button
+                      key={ex}
+                      className="example-chip"
+                      onClick={() => setIdea(ex)}
+                      disabled={running}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="composer-group composer-team-group">
+                <span className="composer-group-label">Your venture team</span>
+                <div className="pipeline-pills">
+                  {AGENTS.map((a, i) => (
+                    <div key={a.key} className={`pipeline-pill ${currentAgent === i ? "is-active" : ""} ${completedAgents.has(i) ? "is-done" : ""}`}>
+                      <a.Icon size={14} />
+                      {a.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {running && (
+                <button className="btn btn-secondary composer-stop" onClick={handleStop}>
+                  <ActionIcon name="stop" size={12} /> Stop build
+                </button>
+              )}
             </div>
           </div>
 
           {/* Error Banner */}
           {error && (
-            <div style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 12,
-              background: "rgba(239,68,68,0.06)",
-              border: "1.5px solid rgba(239,68,68,0.25)",
-              borderRadius: "var(--radius-lg)",
-              padding: "16px 20px",
-              marginBottom: 24,
-            }}>
-              <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
+            <div className="error-banner">
+              <span className="error-icon"><ActionIcon name="alert" size={20} /></span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#b91c1c", marginBottom: 4 }}>
-                  Agent Error
-                </div>
-                <div style={{ fontSize: 13, color: "#7f1d1d", lineHeight: 1.6 }}>{error}</div>
-                {error.includes("ANTHROPIC_API_KEY") && (
-                  <div style={{ marginTop: 10, fontSize: 13, color: "var(--charcoal-60)", background: "var(--cream-dark)", borderRadius: "var(--radius-sm)", padding: "8px 12px", fontFamily: "monospace" }}>
+                <div className="error-banner-title">Agent Error</div>
+                <div className="error-banner-msg">{error}</div>
+                {error.includes("GEMINI_API_KEY") && (
+                  <div className="error-hint">
                     1. Open <strong>.env.local</strong><br/>
-                    2. Replace <code>your_anthropic_api_key_here</code> with your real key from{" "}
-                    <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">console.anthropic.com</a><br/>
+                    2. Set <code>GEMINI_API_KEY=your_key_here</code> from{" "}
+                    <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">aistudio.google.com/apikey</a><br/>
                     3. Restart the dev server: <code>npm run dev</code>
                   </div>
                 )}
               </div>
               <button
                 onClick={() => setError(null)}
-                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--charcoal-30)", flexShrink: 0 }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "var(--text-dim)", flexShrink: 0 }}
               >✕</button>
             </div>
           )}
@@ -396,12 +464,12 @@ function BuildPageInner() {
           {/* Progress Card */}
           {(running || completedAgents.size > 0) && (
             <div className="progress-card">
-              <div className="progress-header">
-                <div className="progress-title">
-                  {running && currentAgent >= 0
-                    ? `Running: ${AGENTS[currentAgent].icon} ${AGENTS[currentAgent].label} Agent...`
+                <div className="progress-top">
+                  <div className="progress-label">
+                    {running && currentAgent >= 0
+                    ? <>{CurrentAgentIcon && <CurrentAgentIcon size={16} />} {AGENT_ACTIVITY[AGENTS[currentAgent].key].working}</>
                     : completedAgents.size === AGENTS.length
-                    ? "✅ All agents complete! Your startup package is ready."
+                    ? <> <ActionIcon name="check" size={16} /> All deliverables are ready to review.</>
                     : "Agents paused"}
                 </div>
                 <div className="progress-pct">
@@ -415,14 +483,14 @@ function BuildPageInner() {
                 {AGENTS.map((a, i) => (
                   <div key={a.key} className="progress-step">
                     <div
-                      className={`step-icon ${
+                      className={`step-badge ${
                         completedAgents.has(i) ? "done" : currentAgent === i ? "active" : ""
                       }`}
                       style={completedAgents.has(i) ? { fontSize: 18 } : {}}
                     >
-                      {completedAgents.has(i) ? "✓" : a.icon}
+                      {completedAgents.has(i) ? <ActionIcon name="check" size={17} /> : <a.Icon size={17} />}
                     </div>
-                    <div className="step-label">{a.label}</div>
+                    <div className="step-name">{a.label}</div>
                   </div>
                 ))}
               </div>
@@ -431,8 +499,8 @@ function BuildPageInner() {
 
           {/* Output Tabs */}
           {(running || Object.values(outputs).some(Boolean)) && (
-            <div className="output-tabs">
-              <div className="tabs-nav">
+            <div className="output-shell">
+              <div className="tabs-row">
                 {AGENTS.map((a, i) => (
                   <button
                     key={a.key}
@@ -440,9 +508,9 @@ function BuildPageInner() {
                     onClick={() => setActiveTab(a.key)}
                     style={activeTab === a.key ? { color: a.color, borderBottomColor: a.color } : {}}
                   >
-                    {a.icon} {a.label}
+                    <a.Icon size={15} /> {a.label}
                     {completedAgents.has(i) && (
-                      <span style={{ color: "#22c55e", marginLeft: 2 }}>✓</span>
+                      <span className="tab-check"><ActionIcon name="check" size={13} /></span>
                     )}
                     {currentAgent === i && (
                       <span className="stream-cursor" style={{ marginLeft: 4 }} />
@@ -451,26 +519,26 @@ function BuildPageInner() {
                 ))}
               </div>
 
-              <div className="tab-content">
+              <div>
                 {/* Tab Header */}
-                <div className="tab-header">
-                  <div className="tab-title">
-                    <span style={{ fontSize: 18 }}>{activeAgent.icon}</span>
+                <div className="panel-head">
+                  <div className="panel-title">
+                    <span className="panel-title-icon" style={{ color: activeAgent.color }}><ActiveAgentIcon size={18} /></span>
                     {activeAgent.label} Agent
                     {completedAgents.has(AGENTS.findIndex((a) => a.key === activeTab)) && (
-                      <span className="badge badge-green">✓ Complete</span>
+                      <span className="badge badge-green"><ActionIcon name="check" size={12} /> Complete</span>
                     )}
                     {currentAgent === AGENTS.findIndex((a) => a.key === activeTab) && (
-                      <span className="badge badge-coral">⚡ Generating...</span>
+                      <span className="badge badge-live"><ActionIcon name="bolt" size={12} /> Building</span>
                     )}
                   </div>
                   {activeOutput && (
-                    <div className="tab-actions">
-                      <button className="copy-btn" onClick={handleCopy}>
-                        {copied ? "✓ Copied!" : "📋 Copy"}
+                    <div className="panel-actions">
+                      <button className="ghost-action" onClick={handleCopy}>
+                        <ActionIcon name={copied ? "check" : "copy"} size={14} /> {copied ? "Copied" : "Copy"}
                       </button>
-                      <button className="copy-btn" onClick={handleDownload}>
-                        ⬇ Download
+                      <button className="ghost-action" onClick={handleDownload}>
+                        <ActionIcon name="download" size={14} /> Download
                       </button>
                     </div>
                   )}
@@ -478,25 +546,37 @@ function BuildPageInner() {
 
                 {/* Tab Body */}
                 {!activeOutput ? (
-                  <div className="stream-box empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 6v6l4 2" />
-                    </svg>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>Waiting for agent...</div>
-                    <div style={{ fontSize: 13 }}>
-                      {currentAgent > AGENTS.findIndex((a) => a.key === activeTab)
-                        ? "This agent hasn't run yet"
-                        : "Click 'Generate Startup Package' to start"}
+                  <div className="stream-box empty activity-empty">
+                    <div className={`activity-orb ${isActiveAgent ? "is-working" : ""}`} style={{ color: activeAgent.color }}><activeAgent.Icon size={26} /></div>
+                    <div className="activity-kicker">
+                      {isActiveAgent ? "In progress now" : isUpcoming ? "Up next in your pipeline" : "Ready when you are"}
                     </div>
+                    <div className="activity-title">
+                      {isActiveAgent ? activity.working : isUpcoming ? activity.upcoming : `Bring ${activeAgent.label.toLowerCase()} into focus.`}
+                    </div>
+                    <div className="activity-copy">
+                      {isActiveAgent || isUpcoming
+                        ? activity.detail
+                        : "Start the pipeline and every specialist will build on the work that comes before it."}
+                    </div>
+                    {(isActiveAgent || isUpcoming) && (
+                      <div className="thinking-chain" aria-label="Agent workflow">
+                        {activity.tasks.map((task, index) => (
+                          <div className="thinking-node" key={task}>
+                            <span className="thinking-index">{String(index + 1).padStart(2, "0")}</span>
+                            <span>{task}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ) : isWebsiteTab ? (
                   /* Website Preview */
                   <div style={{ padding: 0 }}>
                     {/* Show raw HTML option */}
-                    <div style={{ padding: "12px 20px", background: "var(--cream-dark)", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
-                      <span style={{ fontSize: 13, color: "var(--charcoal-60)", alignSelf: "center" }}>
-                        🌐 Live preview below — your landing page code is ready to deploy
+                    <div style={{ padding: "12px 20px", background: "var(--bg-elevated)", borderBottom: "1px solid var(--border)", display: "flex", gap: 8 }}>
+                      <span style={{ fontSize: 13, color: "var(--text-muted)", alignSelf: "center" }}>
+                        Live preview — your landing page code is ready to deploy
                       </span>
                     </div>
                     {previewUrl ? (
@@ -544,25 +624,12 @@ function BuildPageInner() {
 
           {/* Download all CTA */}
           {completedAgents.size === AGENTS.length && (
-            <div
-              style={{
-                marginTop: 32,
-                padding: "28px 32px",
-                background: "linear-gradient(135deg, rgba(217,119,87,0.08), rgba(217,119,87,0.04))",
-                border: "1px solid rgba(217,119,87,0.25)",
-                borderRadius: "var(--radius-xl)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 16,
-              }}
-            >
+            <div className="success-band">
               <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--charcoal)", marginBottom: 4 }}>
-                  🎉 Your startup package is ready!
+                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
+                  Your startup package is ready
                 </div>
-                <div style={{ fontSize: 14, color: "var(--charcoal-60)" }}>
+                <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
                   All 6 agents completed · Business plan, brand, website, and pitch deck generated
                 </div>
               </div>
@@ -571,19 +638,20 @@ function BuildPageInner() {
                   className="btn btn-secondary"
                   onClick={() => {
                     setOutputs(EMPTY_OUTPUTS);
+                    setWebsitePreview(null);
                     setCompletedAgents(new Set());
                     setCurrentAgent(-1);
                     setIdea("");
                   }}
                 >
-                  🔄 Start Over
+                  <ActionIcon name="reset" size={15} /> Start over
                 </button>
                 <button
                   className="btn btn-primary"
                   onClick={() => {
                     // Download all as a text bundle
                     const bundle = AGENTS.map(
-                      (a) => `# ${a.icon} ${a.label}\n\n${outputs[a.key]}`
+                      (a) => `# ${a.label}\n\n${outputs[a.key]}`
                     ).join("\n\n---\n\n");
                     const blob = new Blob([bundle], { type: "text/markdown" });
                     const url = URL.createObjectURL(blob);
@@ -593,23 +661,24 @@ function BuildPageInner() {
                     link.click();
                   }}
                 >
-                  ⬇ Download Full Package
+                  <ActionIcon name="download" size={15} /> Download full package
                 </button>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </main>
 
       {/* Footer */}
-      <footer className="footer">
-        <p>
-          <strong>AI Startup Builder</strong> — Powered by{" "}
-          <a href="https://www.anthropic.com" target="_blank" rel="noreferrer">
-            Anthropic Claude
+      <footer className="site-footer">
+        <div className="container site-footer-inner">
+          <span><strong>Launchpad</strong> — Powered by{" "}
+          <a href="https://ai.google.dev" target="_blank" rel="noreferrer">
+            Google Gemini
           </a>{" "}
-          · 6 Specialized AI Agents
-        </p>
+          · Your on-demand startup team</span>
+          <span>Research · Strategy · Brand · Launch</span>
+        </div>
       </footer>
     </>
   );

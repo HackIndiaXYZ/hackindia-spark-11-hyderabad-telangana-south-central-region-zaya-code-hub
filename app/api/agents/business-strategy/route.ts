@@ -1,15 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "your_anthropic_api_key_here") {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured. Add it to .env.local and restart." },
-      { status: 500 }
-    );
-  }
-  const client = new Anthropic({ apiKey });
+  if (!getGeminiKey()) return geminiKeyError();
 
   let idea = "", marketResearch = "";
   try {
@@ -20,14 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  try {
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-5",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: `You are a McKinsey-level business strategist. Based on the startup idea and market research below, create a comprehensive business strategy.
+  const prompt = `You are a McKinsey-level business strategist. Based on the startup idea and market research below, create a comprehensive business strategy.
 
 **Startup Idea:** ${idea}
 
@@ -45,7 +31,7 @@ Craft a compelling UVP statement:
 
 ## 3. Go-to-Market Strategy
 - Phase 1: Launch (0-3 months)
-- Phase 2: Growth (3-12 months)  
+- Phase 2: Growth (3-12 months)
 - Phase 3: Scale (12-24 months)
 
 ## 4. Positioning Strategy
@@ -66,31 +52,10 @@ Define the 5 most important metrics to track for this business.
 ## 7. Strategic Priorities (First 90 Days)
 Top 10 action items in priority order.
 
-Format in clean, detailed markdown with specific, actionable insights.`,
-        },
-      ],
-    });
+Format in clean, detailed markdown with specific, actionable insights.`;
 
-    const encoder = new TextEncoder();
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(chunk.delta.text));
-            }
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
-    });
+  try {
+    return await streamGeminiResponse(prompt);
   } catch (err: unknown) {
     console.error("Business Strategy Agent error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

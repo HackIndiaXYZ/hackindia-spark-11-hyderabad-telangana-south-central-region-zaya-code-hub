@@ -1,15 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "your_anthropic_api_key_here") {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured. Add it to .env.local and restart." },
-      { status: 500 }
-    );
-  }
-  const client = new Anthropic({ apiKey });
+  if (!getGeminiKey()) return geminiKeyError();
 
   let idea = "", strategy = "", financials = "", branding = "";
   try {
@@ -22,14 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  try {
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-5",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: `You are a top-tier venture capital pitch consultant who has helped companies raise Series A through IPO. Create a comprehensive investor pitch deck narrative for this startup.
+  const prompt = `You are a top-tier venture capital pitch consultant who has helped companies raise Series A through IPO. Create a comprehensive investor pitch deck narrative for this startup.
 
 **Startup Idea:** ${idea}
 
@@ -71,7 +57,7 @@ Include a mock product description that sounds real.
 
 ## Slide 4: Market Opportunity 📈
 - TAM: $X billion
-- SAM: $X billion  
+- SAM: $X billion
 - SOM: $X million (Year 3 target)
 - Growth rate: X% CAGR
 Include why this market is being disrupted NOW.
@@ -141,31 +127,10 @@ Include advisors if relevant.
 ## Appendix: Key Metrics Dashboard
 Include 6 key metrics you'll report to investors monthly.
 
-Make this compelling, specific, and investor-ready. Use real-sounding numbers and market references.`,
-        },
-      ],
-    });
+Make this compelling, specific, and investor-ready. Use real-sounding numbers and market references.`;
 
-    const encoder = new TextEncoder();
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(chunk.delta.text));
-            }
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
-    });
+  try {
+    return await streamGeminiResponse(prompt);
   } catch (err: unknown) {
     console.error("Pitch Deck Agent error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

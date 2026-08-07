@@ -1,15 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "your_anthropic_api_key_here") {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured. Add it to .env.local and restart." },
-      { status: 500 }
-    );
-  }
-  const client = new Anthropic({ apiKey });
+  if (!getGeminiKey()) return geminiKeyError();
 
   let idea = "", strategy = "";
   try {
@@ -20,14 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  try {
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-5",
-      max_tokens: 2048,
-      messages: [
-        {
-          role: "user",
-          content: `You are a CFO and financial modeling expert for early-stage startups. Create a comprehensive financial plan for this startup.
+  const prompt = `You are a CFO and financial modeling expert for early-stage startups. Create a comprehensive financial plan for this startup.
 
 **Startup Idea:** ${idea}
 
@@ -82,31 +68,10 @@ Show months 1-12 with realistic ramp-up.
 ## 7. Key Financial Risks
 Top 5 financial risks and mitigation strategies.
 
-Use realistic, specific numbers. Format in clean markdown with actual dollar figures.`,
-        },
-      ],
-    });
+Use realistic, specific numbers. Format in clean markdown with actual dollar figures.`;
 
-    const encoder = new TextEncoder();
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(chunk.delta.text));
-            }
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
-    });
+  try {
+    return await streamGeminiResponse(prompt);
   } catch (err: unknown) {
     console.error("Financial Planning Agent error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";

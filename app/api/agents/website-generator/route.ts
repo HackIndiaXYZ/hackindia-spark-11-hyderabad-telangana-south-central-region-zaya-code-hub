@@ -1,15 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey || apiKey === "your_anthropic_api_key_here") {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not configured. Add it to .env.local and restart." },
-      { status: 500 }
-    );
-  }
-  const client = new Anthropic({ apiKey });
+  if (!getGeminiKey()) return geminiKeyError();
 
   let idea = "", branding = "", strategy = "";
   try {
@@ -21,14 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  try {
-    const stream = await client.messages.stream({
-      model: "claude-opus-4-5",
-      max_tokens: 4096,
-      messages: [
-        {
-          role: "user",
-          content: `You are an expert full-stack web developer and UI/UX designer. Generate a complete, beautiful, production-ready landing page for this startup.
+  const prompt = `You are an expert full-stack web developer and UI/UX designer. Generate a complete, beautiful, production-ready landing page for this startup.
 
 **Startup Idea:** ${idea}
 
@@ -38,14 +24,15 @@ ${branding ? branding.substring(0, 600) : "Modern tech startup with professional
 **Strategy Context:**
 ${strategy ? strategy.substring(0, 400) : ""}
 
-Generate a COMPLETE single-file HTML landing page with:
+Generate a COMPLETE, single-file interactive landing page with:
 
 REQUIREMENTS:
-1. Fully self-contained HTML (inline CSS + JS, no external dependencies except Google Fonts)
-2. Mobile-responsive design
-3. Dark mode toggle
-4. Smooth scroll animations
-5. Professional, modern design
+1. Output exactly one valid HTML document, from <!DOCTYPE html> through </html>.
+2. It must contain a <style> tag with all CSS and a <script> tag with all JavaScript. Both are required.
+3. Use no external libraries, CDNs, image URLs, fonts, or assets. Use system fonts and inline SVG only.
+4. Mobile-responsive design with usable navigation on small screens.
+5. Include real, lightweight JavaScript interactions: mobile navigation, FAQ accordion, smooth section navigation, and one additional interaction appropriate to the product (such as a pricing toggle, product demo state, or form validation).
+6. Professional, bespoke design — avoid generic gradients, template-like layouts, and emoji icons.
 
 SECTIONS TO INCLUDE:
 - Hero section with headline, subtitle, CTA buttons
@@ -58,36 +45,14 @@ SECTIONS TO INCLUDE:
 
 DESIGN REQUIREMENTS:
 - Use a modern color scheme appropriate for the startup (derive from the brand context)
-- CSS animations and hover effects
-- Google Fonts import
-- Glassmorphism or gradient effects
-- Mobile-first responsive
+- Refined typography, deliberate whitespace, inline SVG iconography, and subtle hover or reveal effects
+- Accessible color contrast, visible keyboard focus states, and semantic HTML
+- Mobile-first responsive CSS
 
-OUTPUT ONLY THE COMPLETE HTML CODE. Start with <!DOCTYPE html> and end with </html>. No markdown code fences, no explanation — just pure HTML.`,
-        },
-      ],
-    });
+OUTPUT ONLY THE COMPLETE HTML CODE. Start with <!DOCTYPE html> and end with </html>. No markdown code fences, no explanation — just pure HTML.`;
 
-    const encoder = new TextEncoder();
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(chunk.delta.text));
-            }
-          }
-        } catch (e) {
-          console.error("Stream error:", e);
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readableStream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
-    });
+  try {
+    return await streamGeminiResponse(prompt, { maxOutputTokens: 16384 });
   } catch (err: unknown) {
     console.error("Website Generator Agent error:", err);
     const message = err instanceof Error ? err.message : "Unknown error";
