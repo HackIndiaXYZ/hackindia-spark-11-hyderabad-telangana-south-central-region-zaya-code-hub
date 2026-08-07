@@ -1,0 +1,253 @@
+ <svg
+      xmlns="http://www.w3.org/2000/svg"
+      xmlnsXlink="http://www.w3.org/1999/xlink"
+      viewBox="0 0 920 600"
+      width="920"
+      height="600"
+      role="img"
+      aria-label="Zing startup pipeline: research, strategy, finance, brand, launch, pitch — sequenced by Mutagent."
+      className={className}
+    >
+      <title>The Zing Mutagent Startup Pipeline</title>
+      <desc>
+        A six-stage sequential pipeline — RESEARCH, STRATEGY, FINANCE, BRAND, LAUNCH, PITCH — orchestrated
+        by Mutagent from agentspec.yaml. Each agent receives context from prior outputs.
+      </desc>
+
+      <defs>
+        <radialGradient id="zing-bg" cx="50%" cy="42%" r="75%">
+          <stop offset="0%" stopColor="#101a30" />
+          <stop offset="60%" stopColor="#0b1224" />
+          <stop offset="100%" stopColor="#070b16" />
+        </radialGradient>
+        <linearGradient id="zing-ring" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#4766D8" />
+          <stop offset="20%" stopColor="#805AD5" />
+          <stop offset="40%" stopColor="#16805D" />
+          <stop offset="60%" stopColor="#B66A1D" />
+          <stop offset="80%" stopColor="#A24D7C" />
+          <stop offset="100%" stopColor="#A44A3D" />
+        </linearGradient>
+        <radialGradient id="zing-comet" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#f5f3ff" />
+          <stop offset="55%" stopColor="#c4b5fd" />
+          <stop offset="100%" stopColor="#805AD5" stopOpacity="0" />
+        </radialGradient>
+        <radialGradient id="zing-hub" cx="50%" cy="40%" r="70%">
+          <stop offset="0%" stopColor="#1c2740" />
+          <stop offset="100%" stopColor="#0d1426" />
+        </radialGradient>
+        <filter id="zing-soft" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="5" />
+        </filter>
+        <marker id="zing-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#805AD5" />
+        </marker>
+
+        <style>{`
+          .zing-stage{font:700 15px 'Helvetica Neue',Arial,sans-serif;letter-spacing:.4px}
+          .zing-owner{font:500 10px 'Helvetica Neue',Arial,sans-serif;fill:#94a3b8}
+          .zing-cmd{font:600 9.5px 'SFMono-Regular',Consolas,monospace}
+          .zing-card{fill:#0e1730;stroke-width:1.6;rx:12}
+          .zing-halo{opacity:.12;transform-box:fill-box;transform-origin:center}
+          @keyframes zing-pulse{
+            0%,100%{opacity:.10;transform:scale(.92)}
+            12%{opacity:.55;transform:scale(1.06)}
+            30%{opacity:.10;transform:scale(.92)}
+          }
+          .zh0{animation:zing-pulse 10.8s ease-in-out infinite}
+          .zh1{animation:zing-pulse 10.8s ease-in-out infinite 1.8s}
+          .zh2{animation:zing-pulse 10.8s ease-in-out infinite 3.6s}
+          .zh3{animation:zing-pulse 10.8s ease-in-out infinite 5.4s}
+          .zh4{animation:zing-pulse 10.8s ease-in-out infinite 7.2s}
+          .zh5{animation:zing-pulse 10.8s ease-in-out infinite 9s}
+          @keyframes zing-march{to{stroke-dashoffset:-44}}
+          .zing-iterate{stroke-dasharray:8 6;animation:zing-march 1.1s linear infinite}
+          @keyframes zing-spoke{0%,100%{opacity:.10}50%{opacity:.30}}
+          .zing-spoke{stroke:#475569;stroke-width:1;animation:zing-spoke 4.5s ease-in-out infinite}
+          .zing-ring-flow{stroke-dasharray:3 9;animation:zing-march 2.4s linear infinite reverse}
+        `}</style>
+      </defs>
+
+      <rect width="920" height="600" fill="url(#zing-bg)" />
+
+      <path
+        id="zing-loop"
+        d="M460,104 L622.8,198 L622.8,386 L460,480 L297.2,386 L297.2,198 Z"
+        fill="none"
+        stroke="url(#zing-ring)"
+        strokeWidth="2.4"
+        opacity="0.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M460,104 L622.8,198 L622.8,386 L460,480 L297.2,386 L297.2,198 Z"
+        fill="none"
+        stroke="#805AD5"
+        strokeWidth="2.4"
+        opacity="0.55"
+        strokeLinejoin="round"
+        className="zing-ring-flow"
+      />
+
+      <g>
+        <line className="zing-spoke" x1="460" y1="292" x2="460" y2="104" />
+        <line className="zing-spoke" x1="460" y1="292" x2="622.8" y2="198" />
+        <line className="zing-spoke" x1="460" y1="292" x2="622.8" y2="386" />
+        <line className="zing-spoke" x1="460" y1="292" x2="460" y2="480" />
+        <line className="zing-spoke" x1="460" y1="292" x2="297.2" y2="386" />
+        <line className="zing-spoke" x1="460" y1="292" x2="297.2" y2="198" />
+        <circle cx="460" cy="292" r="47" fill="url(#zing-hub)" stroke="#334155" strokeWidth="1.4" />
+        <text x="460" y="286" textAnchor="middle" className="zing-stage" fill="#e2e8f0">
+          MUTAGENT
+        </text>
+        <text x="460" y="303" textAnchor="middle" className="zing-owner">
+          agentspec orchestrator
+        </text>
+      </g>
+
+      <path
+        className="zing-iterate"
+        d="M248,188 Q460,72 672,188"
+        fill="none"
+        stroke="#805AD5"
+        strokeWidth="2.2"
+        markerEnd="url(#zing-arrow)"
+      />
+      <text x="460" y="88" textAnchor="middle" className="zing-cmd" fill="#a78bfa">
+        iterate &#8635; refine idea &amp; re-run
+      </text>
+
+      <circle r="13" fill="url(#zing-comet)" filter="url(#zing-soft)">
+        <animateMotion dur="10.8s" repeatCount="indefinite" rotate="auto">
+          <mpath xlinkHref="#zing-loop" />
+        </animateMotion>
+      </circle>
+      <circle r="5" fill="#f5f3ff">
+        <animateMotion dur="10.8s" repeatCount="indefinite" rotate="auto">
+          <mpath xlinkHref="#zing-loop" />
+        </animateMotion>
+      </circle>
+      <circle r="9" fill="url(#zing-comet)" filter="url(#zing-soft)" opacity="0.6">
+        <animateMotion dur="10.8s" begin="-3.6s" repeatCount="indefinite" rotate="auto">
+          <mpath xlinkHref="#zing-loop" />
+        </animateMotion>
+      </circle>
+      <circle r="9" fill="url(#zing-comet)" filter="url(#zing-soft)" opacity="0.6">
+        <animateMotion dur="10.8s" begin="-7.2s" repeatCount="indefinite" rotate="auto">
+          <mpath xlinkHref="#zing-loop" />
+        </animateMotion>
+      </circle>
+
+      <g>
+        <rect className="zing-halo zh0" x="386" y="74" width="148" height="60" rx="14" fill="#4766D8" />
+        <rect className="zing-card" x="386" y="74" width="148" height="60" rx="12" stroke="#4766D8" />
+        <text x="460" y="98" textAnchor="middle" className="zing-stage" fill="#7c9af5">
+          RESEARCH
+        </text>
+        <text x="460" y="112" textAnchor="middle" className="zing-owner">
+          market intelligence
+        </text>
+        <text x="460" y="126" textAnchor="middle" className="zing-cmd" fill="#93b4ff">
+          *market-research
+        </text>
+      </g>
+
+      <g>
+        <rect className="zing-halo zh1" x="548.8" y="168" width="148" height="60" rx="14" fill="#805AD5" />
+        <rect className="zing-card" x="548.8" y="168" width="148" height="60" rx="12" stroke="#805AD5" />
+        <text x="622.8" y="192" textAnchor="middle" className="zing-stage" fill="#b794f6">
+          STRATEGY
+        </text>
+        <text x="622.8" y="206" textAnchor="middle" className="zing-owner">
+          GTM + business model
+        </text>
+        <text x="622.8" y="220" textAnchor="middle" className="zing-cmd" fill="#d6bcfa">
+          *business-strategy
+        </text>
+      </g>
+
+      <g>
+        <rect className="zing-halo zh2" x="548.8" y="356" width="148" height="60" rx="14" fill="#16805D" />
+        <rect className="zing-card" x="548.8" y="356" width="148" height="60" rx="12" stroke="#16805D" />
+        <text x="622.8" y="380" textAnchor="middle" className="zing-stage" fill="#48bb89">
+          FINANCE
+        </text>
+        <text x="622.8" y="394" textAnchor="middle" className="zing-owner">
+          3-year projections
+        </text>
+        <text x="622.8" y="408" textAnchor="middle" className="zing-cmd" fill="#68d391">
+          *financial-planning
+        </text>
+      </g>
+
+      <g>
+        <rect className="zing-halo zh3" x="386" y="450" width="148" height="60" rx="14" fill="#B66A1D" />
+        <rect className="zing-card" x="386" y="450" width="148" height="60" rx="12" stroke="#B66A1D" />
+        <text x="460" y="474" textAnchor="middle" className="zing-stage" fill="#f6ad55">
+          BRAND
+        </text>
+        <text x="460" y="488" textAnchor="middle" className="zing-owner">
+          identity + voice
+        </text>
+        <text x="460" y="502" textAnchor="middle" className="zing-cmd" fill="#fbd38d">
+          *branding
+        </text>
+      </g>
+
+      <g>
+        <rect className="zing-halo zh4" x="223.2" y="356" width="148" height="60" rx="14" fill="#A24D7C" />
+        <rect className="zing-card" x="223.2" y="356" width="148" height="60" rx="12" stroke="#A24D7C" />
+        <text x="297.2" y="380" textAnchor="middle" className="zing-stage" fill="#d68bb5">
+          LAUNCH
+        </text>
+        <text x="297.2" y="394" textAnchor="middle" className="zing-owner">
+          deploy-ready HTML
+        </text>
+        <text x="297.2" y="408" textAnchor="middle" className="zing-cmd" fill="#f0b8d5">
+          *website-generator
+        </text>
+      </g>
+
+      <g>
+        <rect className="zing-halo zh5" x="223.2" y="168" width="148" height="60" rx="14" fill="#A44A3D" />
+        <rect className="zing-card" x="223.2" y="168" width="148" height="60" rx="12" stroke="#A44A3D" />
+        <text x="297.2" y="192" textAnchor="middle" className="zing-stage" fill="#fc8181">
+          PITCH
+        </text>
+        <text x="297.2" y="206" textAnchor="middle" className="zing-owner">
+          10-slide investor deck
+        </text>
+        <text x="297.2" y="220" textAnchor="middle" className="zing-cmd" fill="#feb2b2">
+          *pitch-deck
+        </text>
+      </g>
+
+      <text
+        x="460"
+        y="538"
+        textAnchor="middle"
+        style={{ font: "600 15px 'Helvetica Neue',Arial,sans-serif", letterSpacing: "2px" }}
+        fill="#e2e8f0"
+      >
+        THE ZING STARTUP PIPELINE
+      </text>
+      <text
+        x="460"
+        y="562"
+        textAnchor="middle"
+        style={{ font: "500 11.5px 'SFMono-Regular',Consolas,monospace", letterSpacing: "0.5px" }}
+        fill="#64748b"
+      >
+        research &#9656; strategy &#9656; finance &#9656; brand &#9656; launch &#9656; pitch &#8635;
+      </text>
+      <text
+        x="460"
+        y="584"
+        textAnchor="middle"
+        style={{ font: "500 11px 'Helvetica Neue',Arial,sans-serif" }}
+        fill="#475569"
+      >
+        one startup idea &#183; six sequential agents &#183; Mutagent sequences the rest
+      </text>
+    </svg>
