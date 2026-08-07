@@ -32,10 +32,11 @@ export const metadata: Metadata = {
     siteName: "Zing",
     images: [
       {
-        url: "/cropped_circle_image.png",
+        url: "https://zing.hamrolearning.com/cropped_circle_image.png",
         width: 800,
-        height: 600,
+        height: 800,
         alt: "Zing AI Startup Builder",
+        type: "image/png",
       },
     ],
     locale: "en_US",
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
     title: "Zing — Build Your Startup in Minutes",
     description: "Harness 6 specialized Gemini-powered AI agents to generate your business plan, financial model, and pitch deck automatically.",
     creator: "@zing_ai",
-    images: ["/cropped_circle_image.png"],
+    images: ["https://zing.hamrolearning.com/cropped_circle_image.png"],
   },
   verification: {
     google: "MwDU72YvAqwzNKzVsz0L2loEbvRM-krlOxWXulAOtTg",
