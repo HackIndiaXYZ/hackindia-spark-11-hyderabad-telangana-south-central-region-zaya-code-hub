@@ -19,7 +19,37 @@ export const metadata: Metadata = {
   title: "Zing — Build Your Startup in Minutes",
   description:
     "Harness 6 specialized Gemini-powered AI agents to generate your business plan, competitor analysis, financial model, branding, website, and investor pitch deck automatically.",
-  keywords: "AI startup, business plan generator, pitch deck, market research, AI agents, Gemini",
+  keywords: "AI startup, business plan generator, pitch deck, market research, AI agents, Gemini, Mutagent, automated business plan, startup builder",
+  authors: [{ name: "Zing AI" }],
+  creator: "Zing",
+  publisher: "Zing",
+  robots: "index, follow",
+  openGraph: {
+    title: "Zing — Build Your Startup in Minutes",
+    description: "Harness 6 specialized Gemini-powered AI agents to generate your business plan, financial model, and pitch deck automatically.",
+    url: "https://zing.ai",
+    siteName: "Zing",
+    images: [
+      {
+        url: "/cropped_circle_image.png",
+        width: 800,
+        height: 600,
+        alt: "Zing AI Startup Builder",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Zing — Build Your Startup in Minutes",
+    description: "Harness 6 specialized Gemini-powered AI agents to generate your business plan, financial model, and pitch deck automatically.",
+    creator: "@zing_ai",
+    images: ["/cropped_circle_image.png"],
+  },
+  verification: {
+    google: "MwDU72YvAqwzNKzVsz0L2loEbvRM-krlOxWXulAOtTg",
+  },
   icons: {
     icon: "/cropped_circle_image.png",
     apple: "/cropped_circle_image.png",

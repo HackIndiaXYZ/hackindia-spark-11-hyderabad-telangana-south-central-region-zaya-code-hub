@@ -8,7 +8,7 @@ description: >
   pitch deck. Each agent builds on the output of the previous one, creating a
   coherent, interconnected startup package.
 
-harness: custom-nextjs-api-routes
+harness: custom-nextjs-api-routes.
 model_provider: google-gemini
 model: gemini-2.5-flash
 framework_version: "1.0.0"

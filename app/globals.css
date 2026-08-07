@@ -2897,3 +2897,27 @@ body { background: var(--paper); letter-spacing: -0.02em; }
   font-size: 12px;
   margin-top: 4px;
 }
+
+
+/* ΓöÇΓöÇ Global Mobile Responsiveness ΓöÇΓöÇ */
+@media (max-width: 900px) {
+  .landing-hero-grid,
+  .workflow-grid,
+  .pricing-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .agent-grid,
+  .output-grid,
+  .cta-inner {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    text-align: center;
+  }
+  .site-nav { display: none; }
+  .hero-headline { font-size: 2.5rem; }
+  .section { padding: 48px 0; }
+  .compose-heading { flex-direction: column; }
+  .compose-footer { flex-direction: column; align-items: flex-start; }
+  .cta-inner .btn-primary { width: 100%; }
+}
