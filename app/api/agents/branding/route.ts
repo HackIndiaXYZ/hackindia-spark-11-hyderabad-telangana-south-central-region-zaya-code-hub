@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
+import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
@@ -79,11 +80,13 @@ Show how the brand would appear on:
 - LinkedIn company description
 
 Make it memorable, differentiated, and aligned with the market opportunity. Use compact tables, palettes, examples, and bullet frameworks; avoid long narrative paragraphs.`;
+  const trace = startAgentTrace("branding", req.headers.get("x-run-id") ?? crypto.randomUUID(), idea.length + strategy.length);
 
   try {
-    return await streamGeminiResponse(prompt);
+    return await streamGeminiResponse(prompt, { trace });
   } catch (err: unknown) {
     console.error("Branding Agent error:", err);
+    finishAgentTrace(trace, "failed", { error: err });
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

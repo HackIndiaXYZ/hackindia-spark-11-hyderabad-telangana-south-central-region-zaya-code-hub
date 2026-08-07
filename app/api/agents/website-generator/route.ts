@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
+import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
@@ -51,11 +52,13 @@ DESIGN REQUIREMENTS:
 - Mobile-first responsive CSS
 
 OUTPUT ONLY THE COMPLETE HTML CODE. Start with <!DOCTYPE html> and end with </html>. Before finishing, verify internally that every required section, the <style> tag, the <script> tag, and the closing </html> tag are present. No markdown code fences, no explanation — just pure HTML.`;
+  const trace = startAgentTrace("website-generator", req.headers.get("x-run-id") ?? crypto.randomUUID(), idea.length + branding.length + strategy.length);
 
   try {
-    return await streamGeminiResponse(prompt, { maxOutputTokens: 32768 });
+    return await streamGeminiResponse(prompt, { maxOutputTokens: 32768, trace });
   } catch (err: unknown) {
     console.error("Website Generator Agent error:", err);
+    finishAgentTrace(trace, "failed", { error: err });
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

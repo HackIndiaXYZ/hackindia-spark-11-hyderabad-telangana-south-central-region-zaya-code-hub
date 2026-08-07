@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
+import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
@@ -53,11 +54,13 @@ Define the 5 most important metrics to track for this business.
 Top 10 action items in priority order.
 
 Format in clean, detailed markdown with specific, actionable insights. Avoid essay-style paragraphs: use concise decision statements, tables, ordered phases, and bullet lists that a founder can act on immediately.`;
+  const trace = startAgentTrace("business-strategy", req.headers.get("x-run-id") ?? crypto.randomUUID(), idea.length + marketResearch.length);
 
   try {
-    return await streamGeminiResponse(prompt);
+    return await streamGeminiResponse(prompt, { trace });
   } catch (err: unknown) {
     console.error("Business Strategy Agent error:", err);
+    finishAgentTrace(trace, "failed", { error: err });
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

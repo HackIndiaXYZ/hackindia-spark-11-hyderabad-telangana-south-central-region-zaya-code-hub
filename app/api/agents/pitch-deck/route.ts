@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
+import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
@@ -128,11 +129,13 @@ Include advisors if relevant.
 Include 6 key metrics you'll report to investors monthly.
 
 Make this compelling, specific, and investor-ready. Use real-sounding numbers and market references. Keep every slide scannable: use 3-5 concise bullets, tables, and speaker-note style insights rather than dense paragraphs.`;
+  const trace = startAgentTrace("pitch-deck", req.headers.get("x-run-id") ?? crypto.randomUUID(), idea.length + strategy.length + financials.length + branding.length);
 
   try {
-    return await streamGeminiResponse(prompt);
+    return await streamGeminiResponse(prompt, { trace });
   } catch (err: unknown) {
     console.error("Pitch Deck Agent error:", err);
+    finishAgentTrace(trace, "failed", { error: err });
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

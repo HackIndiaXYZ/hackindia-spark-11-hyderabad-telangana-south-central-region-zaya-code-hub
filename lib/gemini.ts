@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { finishAgentTrace, type AgentTrace } from "@/lib/agent-trace";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 
@@ -21,7 +22,7 @@ export function geminiKeyError() {
 
 export async function streamGeminiResponse(
   prompt: string,
-  options?: { maxOutputTokens?: number; model?: string }
+  options?: { maxOutputTokens?: number; model?: string; trace?: AgentTrace }
 ): Promise<Response> {
   const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
@@ -40,16 +41,22 @@ export async function streamGeminiResponse(
   const encoder = new TextEncoder();
   const readableStream = new ReadableStream({
     async start(controller) {
+      let outputChars = 0;
       try {
         for await (const chunk of result.stream) {
           const text = chunk.text();
-          if (text) controller.enqueue(encoder.encode(text));
+          if (text) {
+            outputChars += text.length;
+            controller.enqueue(encoder.encode(text));
+          }
         }
       } catch (streamErr) {
         console.error("Gemini stream error:", streamErr);
+        if (options?.trace) finishAgentTrace(options.trace, "failed", { error: streamErr });
         controller.error(streamErr);
         return;
       }
+      if (options?.trace) finishAgentTrace(options.trace, "completed", { outputChars });
       controller.close();
     },
   });

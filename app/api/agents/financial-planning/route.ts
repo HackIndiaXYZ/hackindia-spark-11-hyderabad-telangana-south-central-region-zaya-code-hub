@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { geminiKeyError, getGeminiKey, streamGeminiResponse } from "@/lib/gemini";
+import { finishAgentTrace, startAgentTrace } from "@/lib/agent-trace";
 
 export async function POST(req: NextRequest) {
   if (!getGeminiKey()) return geminiKeyError();
@@ -69,11 +70,13 @@ Show months 1-12 with realistic ramp-up.
 Top 5 financial risks and mitigation strategies.
 
 Use realistic, specific numbers. Format in clean markdown with actual dollar figures. Prefer tables, assumptions, and short interpretation callouts over long explanatory paragraphs.`;
+  const trace = startAgentTrace("financial-planning", req.headers.get("x-run-id") ?? crypto.randomUUID(), idea.length + strategy.length);
 
   try {
-    return await streamGeminiResponse(prompt);
+    return await streamGeminiResponse(prompt, { trace });
   } catch (err: unknown) {
     console.error("Financial Planning Agent error:", err);
+    finishAgentTrace(trace, "failed", { error: err });
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
