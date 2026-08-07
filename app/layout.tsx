@@ -16,6 +16,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://zing.hamrolearning.com/"),
   title: "Zing — Build Your Startup in Minutes",
   description:
     "Harness 6 specialized Gemini-powered AI agents to generate your business plan, competitor analysis, financial model, branding, website, and investor pitch deck automatically.",
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Zing — Build Your Startup in Minutes",
     description: "Harness 6 specialized Gemini-powered AI agents to generate your business plan, financial model, and pitch deck automatically.",
-    url: "https://zing.ai",
+    url: "https://zing.hamrolearning.com/",
     siteName: "Zing",
     images: [
       {
