@@ -493,6 +493,73 @@ function BuildPageInner() {
 
         if (mounted) setRecentProjects(projects);
 
+        if (typeof window !== "undefined") {
+          const guestProjectStr = localStorage.getItem("zing_guest_project");
+          if (guestProjectStr) {
+            try {
+              const guestData = JSON.parse(guestProjectStr);
+              if (guestData && guestData.idea && guestData.outputs) {
+                const payload = {
+                  user_id: user.id,
+                  idea: guestData.idea,
+                  title: titleFromIdea(guestData.idea),
+                  deliverables: guestData.outputs,
+                  updated_at: new Date().toISOString(),
+                };
+
+                let savedRes: SavedProject | null = null;
+                const { data: firstSaveTry, error: saveError } = await supabase
+                  .from("projects")
+                  .insert(payload)
+                  .select("id, idea, title, created_at")
+                  .single();
+
+                if (saveError && saveError.message.includes("title")) {
+                  const fallbackPayload = { ...payload };
+                  delete (fallbackPayload as any).title;
+                  const { data: fallbackSaveTry, error: fallbackError } = await supabase
+                    .from("projects")
+                    .insert(fallbackPayload)
+                    .select("id, idea, created_at")
+                    .single();
+                  if (!fallbackError && fallbackSaveTry) {
+                    savedRes = { ...fallbackSaveTry, title: null };
+                  }
+                } else if (!saveError && firstSaveTry) {
+                  savedRes = firstSaveTry;
+                }
+
+                if (savedRes) {
+                  if (mounted) {
+                    setIdea(guestData.idea);
+                    setOutputs(guestData.outputs);
+                    setActiveProjectId(savedRes.id);
+                    setProjectSaveStatus("Your guest progress has been saved to your account!");
+                    
+                    const done = new Set<number>();
+                    AGENTS.forEach((agent, index) => {
+                      if (guestData.outputs[agent.key]?.trim()) done.add(index);
+                    });
+                    setCompletedAgents(done);
+                    if (guestData.outputs.websiteGenerator?.includes("<!DOCTYPE html>")) {
+                      setWebsitePreview(guestData.outputs.websiteGenerator);
+                    }
+                    const firstWithContent = AGENTS.find((agent) => guestData.outputs[agent.key]?.trim());
+                    if (firstWithContent) setActiveTab(firstWithContent.key);
+
+                    projects = [savedRes, ...projects.filter((p) => p.id !== savedRes.id)];
+                    setRecentProjects(projects);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Failed to restore guest project:", err);
+            } finally {
+              localStorage.removeItem("zing_guest_project");
+            }
+          }
+        }
+
         const projectId = searchParams.get("project");
         if (projectId) {
           let project = null;
@@ -522,7 +589,7 @@ function BuildPageInner() {
               businessStrategy: deliverables.businessStrategy ?? "",
               financialPlanning: deliverables.financialPlanning ?? "",
               branding: deliverables.branding ?? "",
-              websiteGenerator: deliverables.websiteGenerator ?? "",
+              websiteGenerator: deliverables.websiteGenerator ?? (deliverables as any).website ?? "",
               pitchDeck: deliverables.pitchDeck ?? "",
             };
             setIdea(project.idea);
@@ -576,6 +643,17 @@ function BuildPageInner() {
       };
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (authReady && !account) {
+      const hasContent = Object.values(outputs).some((val) => val && val.trim().length > 0);
+      if (hasContent) {
+        localStorage.setItem("zing_guest_project", JSON.stringify({ idea, outputs }));
+      } else {
+        localStorage.removeItem("zing_guest_project");
+      }
+    }
+  }, [idea, outputs, account, authReady]);
 
   const setWebsitePreview = (html: string | null) => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
@@ -734,22 +812,49 @@ function BuildPageInner() {
             updated_at: new Date().toISOString(),
           };
           let saved: SavedProject | null = null;
-          const { data: firstSaveTry, error: saveError } = await supabase
-            .from("projects")
-            .insert(payload)
-            .select("id, idea, title, created_at")
-            .single();
+          let firstSaveTry = null;
+          let saveError = null;
+
+          if (activeProjectId) {
+            const { data: updateRes, error: updateErr } = await supabase
+              .from("projects")
+              .update(payload)
+              .eq("id", activeProjectId)
+              .select("id, idea, title, created_at")
+              .single();
+            firstSaveTry = updateRes;
+            saveError = updateErr;
+          } else {
+            const { data: insertRes, error: insertErr } = await supabase
+              .from("projects")
+              .insert(payload)
+              .select("id, idea, title, created_at")
+              .single();
+            firstSaveTry = insertRes;
+            saveError = insertErr;
+          }
 
           if (saveError && saveError.message.includes("title")) {
             const fallbackPayload = { ...payload };
             delete (fallbackPayload as any).title;
-            const { data: fallbackSaveTry, error: fallbackError } = await supabase
-              .from("projects")
-              .insert(fallbackPayload)
-              .select("id, idea, created_at")
-              .single();
-            if (fallbackError) throw fallbackError;
-            saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+            if (activeProjectId) {
+              const { data: fallbackSaveTry, error: fallbackError } = await supabase
+                .from("projects")
+                .update(fallbackPayload)
+                .eq("id", activeProjectId)
+                .select("id, idea, created_at")
+                .single();
+              if (fallbackError) throw fallbackError;
+              saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+            } else {
+              const { data: fallbackSaveTry, error: fallbackError } = await supabase
+                .from("projects")
+                .insert(fallbackPayload)
+                .select("id, idea, created_at")
+                .single();
+              if (fallbackError) throw fallbackError;
+              saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+            }
           } else if (saveError) {
             throw saveError;
           } else {
