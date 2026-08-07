@@ -514,9 +514,10 @@ function BuildPageInner() {
                   .select("id, idea, title, created_at")
                   .single();
 
-                if (saveError && saveError.message.includes("title")) {
+                if (saveError) {
                   const fallbackPayload = { ...payload };
                   delete (fallbackPayload as any).title;
+                  delete (fallbackPayload as any).updated_at;
                   const { data: fallbackSaveTry, error: fallbackError } = await supabase
                     .from("projects")
                     .insert(fallbackPayload)
@@ -525,7 +526,7 @@ function BuildPageInner() {
                   if (!fallbackError && fallbackSaveTry) {
                     savedRes = { ...fallbackSaveTry, title: null };
                   }
-                } else if (!saveError && firstSaveTry) {
+                } else if (firstSaveTry) {
                   savedRes = firstSaveTry;
                 }
 
@@ -834,9 +835,10 @@ function BuildPageInner() {
             saveError = insertErr;
           }
 
-          if (saveError && saveError.message.includes("title")) {
+          if (saveError) {
             const fallbackPayload = { ...payload };
             delete (fallbackPayload as any).title;
+            delete (fallbackPayload as any).updated_at;
             if (activeProjectId) {
               const { data: fallbackSaveTry, error: fallbackError } = await supabase
                 .from("projects")
@@ -855,8 +857,6 @@ function BuildPageInner() {
               if (fallbackError) throw fallbackError;
               saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
             }
-          } else if (saveError) {
-            throw saveError;
           } else {
             saved = firstSaveTry;
           }

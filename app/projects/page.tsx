@@ -54,15 +54,13 @@ export default function ProjectsPage() {
           .select("id, idea, title, created_at, updated_at, deliverables")
           .order("created_at", { ascending: false });
 
-        if (queryError && queryError.message.includes("title")) {
+        if (queryError) {
           const { data: fallbackTry, error: fallbackError } = await supabase
             .from("projects")
-            .select("id, idea, created_at, updated_at, deliverables")
+            .select("id, idea, created_at, deliverables")
             .order("created_at", { ascending: false });
           if (fallbackError) throw fallbackError;
-          projectList = (fallbackTry ?? []).map((p: any) => ({ ...p, title: null }));
-        } else if (queryError) {
-          throw queryError;
+          projectList = (fallbackTry ?? []).map((p: any) => ({ ...p, title: null, updated_at: p.created_at }));
         } else {
           projectList = firstTry ?? [];
         }
