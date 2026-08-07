@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Outfit } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -32,7 +33,24 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${outfit.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Script
+          id="ai-widget"
+          type="module"
+          strategy="afterInteractive"
+        >
+          {`
+            import { embedWidget } from "https://cdn.jsdelivr.net/npm/agent-embed-widget/dist/agent-embed-widget.es.js";
+
+            embedWidget({
+              type: "tray",
+              url: "https://console.thesys.dev/app/BxC4Ylrouq4-kyAD2eVg-",
+              theme: "light",
+            });
+          `}
+        </Script>
+      </body>
     </html>
   );
 }
