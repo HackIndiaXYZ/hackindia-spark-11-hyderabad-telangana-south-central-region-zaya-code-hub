@@ -49,14 +49,19 @@ export async function fetchRemoteProjects(
     const { data, error } = await query;
     if (!error) {
       return {
-        projects: (data ?? []).map((project) =>
-          normalizeProject({
-            ...(project as unknown as Record<string, unknown>),
-            deliverables: normalizeDeliverables(
-              (project as { deliverables?: Record<string, string> }).deliverables
-            ),
-          })
-        ),
+        projects: (data ?? []).map((project) => {
+          const projectRecord = project && typeof project === "object" ? (project as Record<string, unknown>) : {};
+          const deliverables = normalizeDeliverables(
+            typeof projectRecord.deliverables === "object" && projectRecord.deliverables !== null
+              ? (projectRecord.deliverables as Record<string, string>)
+              : undefined
+          );
+
+          return normalizeProject({
+            ...projectRecord,
+            deliverables,
+          });
+        }),
         error: null,
         tableMissing: false,
       };
