@@ -77,6 +77,14 @@ export function storeLocalProject(project: SavedProjectRecord) {
   localStorage.setItem(`${STORAGE_PREFIX}${project.user_id}`, JSON.stringify(next));
 }
 
+export function saveLocalProjects(userId: string, projects: SavedProjectRecord[]) {
+  if (typeof window === "undefined") return;
+  const next = projects
+    .map((project) => normalizeProject({ ...project, user_id: userId }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  localStorage.setItem(`${STORAGE_PREFIX}${userId}`, JSON.stringify(next));
+}
+
 export function deleteLocalProject(userId: string, projectId: string) {
   if (typeof window === "undefined") return;
   const next = loadLocalProjects(userId).filter((project) => project.id !== projectId);

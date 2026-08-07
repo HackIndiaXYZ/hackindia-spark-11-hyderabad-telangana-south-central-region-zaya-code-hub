@@ -4,41 +4,42 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
-import { deleteLocalProject, loadLocalProjects, mergeProjects, normalizeProject, projectErrorMessage } from "@/lib/projects";
+import { loadUserProjects } from "@/lib/project-sync";
+import {
+  deleteLocalProject,
+  loadLocalProjects,
+  normalizeProject,
+  projectErrorMessage,
+  saveLocalProjects,
+  type SavedProjectRecord,
+} from "@/lib/projects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type Project = {
-  id: string;
-  idea: string;
-  title: string | null;
-  created_at: string;
-  updated_at?: string;
-  deliverables?: Record<string, string> | null;
-};
-
-function projectTitle(project: Project) {
+function projectTitle(project: SavedProjectRecord) {
   if (project.title?.trim()) return project.title.trim();
   const idea = project.idea.trim();
   if (idea.length <= 72) return idea;
   return `${idea.slice(0, 72).trim()}…`;
 }
 
-function deliverableCount(project: Project) {
+function deliverableCount(project: SavedProjectRecord) {
   if (!project.deliverables || typeof project.deliverables !== "object") return 0;
   return Object.values(project.deliverables).filter((value) => typeof value === "string" && value.trim()).length;
 }
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<SavedProjectRecord[]>([]);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadProjects() {
+      let activeUserId: string | null = null;
       try {
         const supabase = getSupabaseBrowserClient();
         const {
@@ -48,42 +49,28 @@ export default function ProjectsPage() {
           router.replace("/login?next=/projects");
           return;
         }
+        activeUserId = user.id;
         setUserId(user.id);
         setEmail(user.email ?? null);
 
         const localProjects = loadLocalProjects(user.id);
-        let projectList: Project[] = localProjects;
-        const { data: firstTry, error: queryError } = await supabase
-          .from("projects")
-          .select("id, idea, title, created_at, updated_at, deliverables")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
+        const result = await loadUserProjects(supabase, user.id, localProjects);
 
-        if (queryError) {
-          const { data: fallbackTry, error: fallbackError } = await supabase
-            .from("projects")
-            .select("id, user_id, idea, created_at, deliverables")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
-          if (fallbackError) {
-            if (projectList.length) {
-              setError("Showing locally saved projects. Supabase storage is not reachable right now.");
-            } else {
-              throw fallbackError;
-            }
-          } else {
-            projectList = mergeProjects(
-              (fallbackTry ?? []).map((project: Record<string, unknown>) => normalizeProject({ ...project, title: null })),
-              localProjects
-            );
-          }
+        if (result.error && !result.projects.length) {
+          setError(projectErrorMessage(result.error, "Could not load projects."));
         } else {
-          projectList = mergeProjects((firstTry ?? []).map(normalizeProject), localProjects);
+          setProjects(result.projects);
+          saveLocalProjects(user.id, result.projects);
+          if (result.warning) setWarning(result.warning);
         }
-
-        setProjects(projectList);
       } catch (loadError) {
-        setError(projectErrorMessage(loadError, "Could not load projects."));
+        const localOnly = activeUserId ? loadLocalProjects(activeUserId) : [];
+        if (localOnly.length) {
+          setProjects(localOnly);
+          setWarning("Showing locally saved projects. Cloud sync is temporarily unavailable.");
+        } else {
+          setError(projectErrorMessage(loadError, "Could not load projects."));
+        }
       } finally {
         setLoading(false);
       }
@@ -141,53 +128,55 @@ export default function ProjectsPage() {
 
           {loading ? (
             <p className="projects-state">Loading your projects…</p>
-          ) : error ? (
-            <p className="projects-state projects-error">{error}</p>
-          ) : projects.length ? (
-            <div className="projects-grid">
-              {projects.map((project, index) => {
-                const count = deliverableCount(project);
-                return (
-                  <article className="project-tile" key={project.id}>
-                    <div className="project-tile-top">
-                      <span className="project-index">{String(index + 1).padStart(2, "0")}</span>
-                      <span>{new Date(project.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <strong>{projectTitle(project)}</strong>
-                    <p className="project-snippet">{project.idea}</p>
-                    <div className="project-tile-meta">
-                      <em>
-                        {count}/6 deliverables
-                      </em>
-                      <div className="project-tile-actions">
-                        <Link href={`/build?project=${project.id}`} className="btn btn-primary btn-sm">
-                          Open
-                        </Link>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm"
-                          disabled={deletingId === project.id}
-                          onClick={() => handleDelete(project.id)}
-                        >
-                          {deletingId === project.id ? "Deleting…" : "Delete"}
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
           ) : (
-            <div className="projects-empty">
-              <div className="projects-empty-orb" aria-hidden>
-                ✦
-              </div>
-              <h2>Your first project is waiting.</h2>
-              <p>Generate a startup package and it will be saved privately to this account.</p>
-              <Link href="/build" className="btn btn-primary">
-                Open workspace
-              </Link>
-            </div>
+            <>
+              {warning ? <p className="projects-state">{warning}</p> : null}
+              {error ? <p className="projects-state projects-error">{error}</p> : null}
+              {projects.length ? (
+                <div className="projects-grid">
+                  {projects.map((project, index) => {
+                    const count = deliverableCount(project);
+                    return (
+                      <article className="project-tile" key={project.id}>
+                        <div className="project-tile-top">
+                          <span className="project-index">{String(index + 1).padStart(2, "0")}</span>
+                          <span>{new Date(project.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <strong>{projectTitle(project)}</strong>
+                        <p className="project-snippet">{project.idea}</p>
+                        <div className="project-tile-meta">
+                          <em>{count}/6 deliverables</em>
+                          <div className="project-tile-actions">
+                            <Link href={`/build?project=${project.id}`} className="btn btn-primary btn-sm">
+                              Open
+                            </Link>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              disabled={deletingId === project.id}
+                              onClick={() => handleDelete(project.id)}
+                            >
+                              {deletingId === project.id ? "Deleting…" : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : !error ? (
+                <div className="projects-empty">
+                  <div className="projects-empty-orb" aria-hidden>
+                    ✦
+                  </div>
+                  <h2>Your first project is waiting.</h2>
+                  <p>Generate a startup package and it will be saved privately to this account.</p>
+                  <Link href="/build" className="btn btn-primary">
+                    Open workspace
+                  </Link>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
       </main>

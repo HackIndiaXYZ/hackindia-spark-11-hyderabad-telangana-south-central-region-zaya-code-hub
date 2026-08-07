@@ -33,7 +33,7 @@ agents:
     role: >
       World-class market research analyst that produces comprehensive market
       intelligence reports from a startup idea.
-    endpoint: /api/agents/market-research
+    endpoint: /api/mutagent/market-research
     streaming: true
     outputs:
       - name: market_research_report
@@ -67,7 +67,7 @@ agents:
     role: >
       McKinsey-level business strategist that creates comprehensive go-to-market
       and business model strategies, using market research as context.
-    endpoint: /api/agents/business-strategy
+    endpoint: /api/mutagent/business-strategy
     streaming: true
     inputs_from:
       - agent: market-research
@@ -100,7 +100,7 @@ agents:
     role: >
       CFO-level financial modeling expert that creates comprehensive 3-year financial
       projections, pricing strategy, and unit economics for early-stage startups.
-    endpoint: /api/agents/financial-planning
+    endpoint: /api/mutagent/financial-planning
     streaming: true
     inputs_from:
       - agent: business-strategy
@@ -133,7 +133,7 @@ agents:
     role: >
       World-class brand strategist and creative director that designs complete
       brand identities including naming, visual identity, and messaging.
-    endpoint: /api/agents/branding
+    endpoint: /api/mutagent/branding
     streaming: true
     inputs_from:
       - agent: business-strategy
@@ -169,7 +169,7 @@ agents:
     role: >
       Expert full-stack developer that generates complete, production-ready
       single-file HTML landing pages with inline CSS and JS.
-    endpoint: /api/agents/website-generator
+    endpoint: /api/mutagent/website-generator
     streaming: true
     inputs_from:
       - agent: branding
@@ -207,7 +207,7 @@ agents:
     role: >
       Top-tier VC pitch consultant that creates compelling 10-slide investor
       pitch deck narratives with realistic financial asks.
-    endpoint: /api/agents/pitch-deck
+    endpoint: /api/mutagent/pitch-deck
     streaming: true
     inputs_from:
       - agent: business-strategy

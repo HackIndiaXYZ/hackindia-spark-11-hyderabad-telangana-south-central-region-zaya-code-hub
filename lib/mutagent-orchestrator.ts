@@ -88,7 +88,7 @@ export class MutagentOrchestrator {
       // 1. Market Research
       callbacks.onAgentStart(0, "marketResearch");
       marketResearch = await this.streamAgentOutput(
-        "/api/agents/market-research",
+        "/api/mutagent/market-research",
         { idea },
         (text) => callbacks.onAgentUpdate("marketResearch", text),
         callbacks.onTraceUpdate("marketResearch")
@@ -99,7 +99,7 @@ export class MutagentOrchestrator {
       // 2. Business Strategy (depends on marketResearch)
       callbacks.onAgentStart(1, "businessStrategy");
       businessStrategy = await this.streamAgentOutput(
-        "/api/agents/business-strategy",
+        "/api/mutagent/business-strategy",
         { idea, marketResearch },
         (text) => callbacks.onAgentUpdate("businessStrategy", text),
         callbacks.onTraceUpdate("businessStrategy")
@@ -110,7 +110,7 @@ export class MutagentOrchestrator {
       // 3. Financial Planning (depends on businessStrategy)
       callbacks.onAgentStart(2, "financialPlanning");
       financialPlanning = await this.streamAgentOutput(
-        "/api/agents/financial-planning",
+        "/api/mutagent/financial-planning",
         { idea, strategy: businessStrategy },
         (text) => callbacks.onAgentUpdate("financialPlanning", text),
         callbacks.onTraceUpdate("financialPlanning")
@@ -121,7 +121,7 @@ export class MutagentOrchestrator {
       // 4. Branding (depends on businessStrategy)
       callbacks.onAgentStart(3, "branding");
       branding = await this.streamAgentOutput(
-        "/api/agents/branding",
+        "/api/mutagent/branding",
         { idea, strategy: businessStrategy },
         (text) => callbacks.onAgentUpdate("branding", text),
         callbacks.onTraceUpdate("branding")
@@ -132,7 +132,7 @@ export class MutagentOrchestrator {
       // 5. Website Generator (depends on branding and businessStrategy)
       callbacks.onAgentStart(4, "websiteGenerator");
       website = await this.streamAgentOutput(
-        "/api/agents/website-generator",
+        "/api/mutagent/website-generator",
         { idea, branding, strategy: businessStrategy },
         (text) => callbacks.onAgentUpdate("websiteGenerator", text),
         callbacks.onTraceUpdate("websiteGenerator")
@@ -148,7 +148,7 @@ export class MutagentOrchestrator {
       // 6. Pitch Deck (depends on businessStrategy, financialPlanning, branding)
       callbacks.onAgentStart(5, "pitchDeck");
       pitchDeck = await this.streamAgentOutput(
-        "/api/agents/pitch-deck",
+        "/api/mutagent/pitch-deck",
         { idea, strategy: businessStrategy, financials: financialPlanning, branding },
         (text) => callbacks.onAgentUpdate("pitchDeck", text),
         callbacks.onTraceUpdate("pitchDeck")

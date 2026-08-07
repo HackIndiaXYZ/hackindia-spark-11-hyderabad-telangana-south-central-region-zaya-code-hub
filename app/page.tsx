@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/navbar";
+import { AgentPipelineDiagram } from "@/components/agent-pipeline-diagram";
 import {
   IconResearch,
   IconStrategy,
@@ -115,6 +116,9 @@ export default function HomePage() {
                 Each stage runs in order and receives context from prior outputs,
                 so your financial model reflects your GTM and your pitch reflects your numbers.
               </p>
+            </div>
+            <div className="pipeline-diagram-wrap">
+              <AgentPipelineDiagram className="pipeline-diagram" />
             </div>
             <div className="agent-grid">
               {AGENTS.map((agent) => (

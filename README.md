@@ -125,7 +125,7 @@ npm run build
 ```text
 app/
   build/                  # Interactive six-agent workspace
-  api/agents/             # Streaming Gemini routes for every specialist
+  api/mutagent/           # Streaming Gemini routes for every specialist
 components/               # Shared UI and agent icons
 lib/gemini.ts             # Gemini streaming client
 lib/agent-trace.ts        # Structured server-side trace events

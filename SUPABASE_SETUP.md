@@ -17,7 +17,7 @@ Restart `npm run dev` after changing environment variables.
 
 ## 2. Create the data and Storage policies
 
-Open **SQL Editor** in Supabase, paste the contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it. It creates the `profiles` table and private `user-assets` bucket with user-scoped access policies.
+Open **SQL Editor** in Supabase, paste the contents of [`supabase/schema.sql`](./supabase/schema.sql), and run it. It creates the `profiles` and `projects` tables (required for saved startup packages) and the private `user-assets` bucket with user-scoped access policies.
 
 ## 3. Enable sign-in methods
 

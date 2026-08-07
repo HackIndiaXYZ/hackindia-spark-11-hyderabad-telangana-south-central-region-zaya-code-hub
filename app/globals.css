@@ -336,6 +336,21 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.65;
 }
 
+.pipeline-diagram-wrap {
+  margin: 0 0 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: #070b16;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.pipeline-diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .agent-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

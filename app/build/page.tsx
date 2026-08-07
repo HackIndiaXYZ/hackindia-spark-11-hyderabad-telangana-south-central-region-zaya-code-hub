@@ -6,7 +6,8 @@ import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Navbar } from "@/components/navbar";
-import { createLocalProject, loadLocalProjects, mergeProjects, normalizeProject, storeLocalProject } from "@/lib/projects";
+import { createLocalProject, loadLocalProjects, saveLocalProjects, storeLocalProject } from "@/lib/projects";
+import { loadUserProjects, normalizeDeliverables, upsertRemoteProject, fetchRemoteProjects } from "@/lib/project-sync";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { MutagentOrchestrator } from "@/lib/mutagent-orchestrator";
 import {
@@ -84,12 +85,12 @@ type SavedProject = {
 
 // ── Agent Configuration ────────────────────────────────
 const AGENTS: AgentConfig[] = [
-  { key: "marketResearch", label: "Market Research", Icon: IconResearch, endpoint: "/api/agents/market-research", color: "#4766D8" },
-  { key: "businessStrategy", label: "Business Strategy", Icon: IconStrategy, endpoint: "/api/agents/business-strategy", color: "#805AD5" },
-  { key: "financialPlanning", label: "Financial Planning", Icon: IconFinance, endpoint: "/api/agents/financial-planning", color: "#16805D" },
-  { key: "branding", label: "Brand Identity", Icon: IconBrand, endpoint: "/api/agents/branding", color: "#B66A1D" },
-  { key: "websiteGenerator", label: "Launch Site", Icon: IconWebsite, endpoint: "/api/agents/website-generator", color: "#A24D7C" },
-  { key: "pitchDeck", label: "Investor Deck", Icon: IconPitch, endpoint: "/api/agents/pitch-deck", color: "#A44A3D" },
+  { key: "marketResearch", label: "Market Research", Icon: IconResearch, endpoint: "/api/mutagent/market-research", color: "#4766D8" },
+  { key: "businessStrategy", label: "Business Strategy", Icon: IconStrategy, endpoint: "/api/mutagent/business-strategy", color: "#805AD5" },
+  { key: "financialPlanning", label: "Financial Planning", Icon: IconFinance, endpoint: "/api/mutagent/financial-planning", color: "#16805D" },
+  { key: "branding", label: "Brand Identity", Icon: IconBrand, endpoint: "/api/mutagent/branding", color: "#B66A1D" },
+  { key: "websiteGenerator", label: "Launch Site", Icon: IconWebsite, endpoint: "/api/mutagent/website-generator", color: "#A24D7C" },
+  { key: "pitchDeck", label: "Investor Deck", Icon: IconPitch, endpoint: "/api/mutagent/pitch-deck", color: "#A44A3D" },
 ];
 
 function ActionIcon({ name, size = 16 }: { name: "check" | "copy" | "download" | "stop" | "reset" | "alert" | "bolt" | "upload" | "arrowUp" | "folder" | "spark"; size?: number }) {
@@ -420,32 +421,13 @@ function BuildPageInner() {
         });
 
         const localProjects = loadLocalProjects(user.id);
-        let projects: SavedProject[] = localProjects;
-        const { data: firstProjectsTry, error: projectsError } = await supabase
-          .from("projects")
-          .select("id, user_id, idea, title, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(6);
-
-        if (projectsError && projectsError.message.includes("title")) {
-          const { data: fallbackProjects, error: fallbackError } = await supabase
-            .from("projects")
-            .select("id, user_id, idea, created_at")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(6);
-          if (!fallbackError && fallbackProjects) {
-            projects = mergeProjects(
-              fallbackProjects.map((project: Record<string, unknown>) => normalizeProject({ ...project, title: null })),
-              localProjects
-            ).slice(0, 6);
-          }
-        } else if (!projectsError && firstProjectsTry) {
-          projects = mergeProjects(firstProjectsTry.map(normalizeProject), localProjects).slice(0, 6);
+        const { projects: loadedProjects, warning } = await loadUserProjects(supabase, user.id, localProjects, 6);
+        let recentProjectsList = loadedProjects;
+        if (mounted) {
+          setRecentProjects(recentProjectsList);
+          saveLocalProjects(user.id, recentProjectsList);
+          if (warning) setProjectSaveStatus(warning);
         }
-
-        if (mounted) setRecentProjects(projects);
 
         if (typeof window !== "undefined") {
           const guestProjectStr = localStorage.getItem("zing_guest_project");
@@ -453,70 +435,42 @@ function BuildPageInner() {
             try {
               const guestData = JSON.parse(guestProjectStr);
               if (guestData && guestData.idea && guestData.outputs) {
-                const payload = {
-                  user_id: user.id,
-                  idea: guestData.idea,
-                  title: titleFromIdea(guestData.idea),
-                  deliverables: guestData.outputs,
-                  updated_at: new Date().toISOString(),
-                };
-
-                let savedRes: SavedProject | null = null;
-                const { data: firstSaveTry, error: saveError } = await supabase
-                  .from("projects")
-                  .insert(payload)
-                  .select("id, user_id, idea, title, created_at")
-                  .single();
-
-                if (saveError) {
-                  const fallbackPayload = {
-                    user_id: payload.user_id,
-                    idea: payload.idea,
-                    deliverables: payload.deliverables,
-                  };
-                  const { data: fallbackSaveTry, error: fallbackError } = await supabase
-                    .from("projects")
-                    .insert(fallbackPayload)
-                    .select("id, user_id, idea, created_at")
-                    .single();
-                  if (!fallbackError && fallbackSaveTry) {
-                    savedRes = normalizeProject({ ...fallbackSaveTry, title: null, deliverables: guestData.outputs });
-                  }
-                } else if (firstSaveTry) {
-                  savedRes = normalizeProject({ ...firstSaveTry, deliverables: guestData.outputs });
-                }
-
-                if (!savedRes) {
-                  savedRes = createLocalProject({
+                let savedRes =
+                  (await upsertRemoteProject(supabase, null, {
                     user_id: user.id,
                     idea: guestData.idea,
                     title: titleFromIdea(guestData.idea),
-                    deliverables: guestData.outputs,
+                    deliverables: normalizeDeliverables(guestData.outputs) ?? guestData.outputs,
+                  })) ??
+                  createLocalProject({
+                    user_id: user.id,
+                    idea: guestData.idea,
+                    title: titleFromIdea(guestData.idea),
+                    deliverables: normalizeDeliverables(guestData.outputs) ?? guestData.outputs,
                   });
-                }
+
                 storeLocalProject(savedRes);
 
-                if (savedRes) {
-                  if (mounted) {
-                    setIdea(guestData.idea);
-                    setOutputs(guestData.outputs);
-                    setActiveProjectId(savedRes.id);
-                    setProjectSaveStatus("Your guest progress has been saved to your account!");
-                    
-                    const done = new Set<number>();
-                    AGENTS.forEach((agent, index) => {
-                      if (guestData.outputs[agent.key]?.trim()) done.add(index);
-                    });
-                    setCompletedAgents(done);
-                    if (guestData.outputs.websiteGenerator?.includes("<!DOCTYPE html>")) {
-                      setWebsitePreview(guestData.outputs.websiteGenerator);
-                    }
-                    const firstWithContent = AGENTS.find((agent) => guestData.outputs[agent.key]?.trim());
-                    if (firstWithContent) setActiveTab(firstWithContent.key);
+                if (mounted) {
+                  setIdea(guestData.idea);
+                  setOutputs(guestData.outputs);
+                  setActiveProjectId(savedRes.id);
+                  setProjectSaveStatus("Your guest progress has been saved to your account!");
 
-                    projects = [savedRes, ...projects.filter((p) => p.id !== savedRes.id)];
-                    setRecentProjects(projects);
+                  const done = new Set<number>();
+                  AGENTS.forEach((agent, index) => {
+                    if (guestData.outputs[agent.key]?.trim()) done.add(index);
+                  });
+                  setCompletedAgents(done);
+                  if (guestData.outputs.websiteGenerator?.includes("<!DOCTYPE html>")) {
+                    setWebsitePreview(guestData.outputs.websiteGenerator);
                   }
+                  const firstWithContent = AGENTS.find((agent) => guestData.outputs[agent.key]?.trim());
+                  if (firstWithContent) setActiveTab(firstWithContent.key);
+
+                  recentProjectsList = [savedRes, ...recentProjectsList.filter((p) => p.id !== savedRes.id)].slice(0, 6);
+                  setRecentProjects(recentProjectsList);
+                  saveLocalProjects(user.id, recentProjectsList);
                 }
               }
             } catch (err) {
@@ -529,30 +483,9 @@ function BuildPageInner() {
 
         const projectId = searchParams.get("project");
         if (projectId) {
-          let project = null;
           const localProject = loadLocalProjects(user.id).find((item) => item.id === projectId) ?? null;
-          const { data: firstProjectTry, error: projectError } = await supabase
-            .from("projects")
-            .select("id, user_id, idea, title, deliverables")
-            .eq("id", projectId)
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          if (projectError && projectError.message.includes("title")) {
-            const { data: fallbackProject, error: fallbackError } = await supabase
-              .from("projects")
-              .select("id, user_id, idea, deliverables")
-              .eq("id", projectId)
-              .eq("user_id", user.id)
-              .maybeSingle();
-            if (fallbackError) throw fallbackError;
-            project = fallbackProject ? normalizeProject({ ...fallbackProject, title: null }) : localProject;
-          } else if (projectError) {
-            if (!localProject) throw projectError;
-            project = localProject;
-          } else {
-            project = firstProjectTry ? normalizeProject(firstProjectTry) : localProject;
-          }
+          const { projects: remoteProjects } = await fetchRemoteProjects(supabase, user.id);
+          const project = remoteProjects.find((item) => item.id === projectId) ?? localProject;
           if (project && mounted) {
             const deliverables = (project.deliverables ?? {}) as Partial<AgentOutputs> & { website?: string };
             const nextOutputs: AgentOutputs = {
@@ -724,79 +657,46 @@ function BuildPageInner() {
         if (!user) {
           setProjectSaveStatus("Sign in to save this package to your account.");
         } else {
-          const payload = {
+          const deliverables = normalizeDeliverables({
+            marketResearch,
+            businessStrategy,
+            financialPlanning,
+            branding,
+            websiteGenerator: website,
+            pitchDeck,
+          }) ?? {
+            marketResearch,
+            businessStrategy,
+            financialPlanning,
+            branding,
+            websiteGenerator: website,
+            pitchDeck,
+          };
+
+          const remoteSaved = await upsertRemoteProject(supabase, activeProjectId, {
             user_id: user.id,
             idea,
             title: titleFromIdea(idea),
-            deliverables: {
-              marketResearch,
-              businessStrategy,
-              financialPlanning,
-              branding,
-              website,
-              pitchDeck,
-            },
-            updated_at: new Date().toISOString(),
-          };
-          let saved: SavedProject | null = null;
-          let firstSaveTry = null;
-          let saveError = null;
+            deliverables,
+          });
+          const saved =
+            remoteSaved ??
+            createLocalProject({
+              id: activeProjectId ?? undefined,
+              user_id: user.id,
+              idea,
+              title: titleFromIdea(idea),
+              deliverables,
+            });
 
-          if (activeProjectId) {
-            const { data: updateRes, error: updateErr } = await supabase
-              .from("projects")
-              .update(payload)
-              .eq("id", activeProjectId)
-              .eq("user_id", user.id)
-              .select("id, user_id, idea, title, created_at")
-              .single();
-            firstSaveTry = updateRes;
-            saveError = updateErr;
-          } else {
-            const { data: insertRes, error: insertErr } = await supabase
-              .from("projects")
-              .insert(payload)
-              .select("id, user_id, idea, title, created_at")
-              .single();
-            firstSaveTry = insertRes;
-            saveError = insertErr;
-          }
-
-          if (saveError) {
-            const fallbackPayload = {
-              user_id: payload.user_id,
-              idea: payload.idea,
-              deliverables: payload.deliverables,
-            };
-            if (activeProjectId) {
-              const { data: fallbackSaveTry, error: fallbackError } = await supabase
-                .from("projects")
-                .update(fallbackPayload)
-                .eq("id", activeProjectId)
-                .eq("user_id", user.id)
-                .select("id, user_id, idea, created_at")
-                .single();
-              if (fallbackError) throw fallbackError;
-              saved = fallbackSaveTry ? normalizeProject({ ...fallbackSaveTry, title: null, deliverables: payload.deliverables }) : null;
-            } else {
-              const { data: fallbackSaveTry, error: fallbackError } = await supabase
-                .from("projects")
-                .insert(fallbackPayload)
-                .select("id, user_id, idea, created_at")
-                .single();
-              if (fallbackError) throw fallbackError;
-              saved = fallbackSaveTry ? normalizeProject({ ...fallbackSaveTry, title: null, deliverables: payload.deliverables }) : null;
-            }
-          } else {
-            saved = firstSaveTry ? normalizeProject({ ...firstSaveTry, deliverables: payload.deliverables }) : null;
-          }
-
-          if (saved) {
-            storeLocalProject(saved);
-            setActiveProjectId(saved.id);
-            setRecentProjects((current) => [saved!, ...current.filter((item) => item.id !== saved!.id)].slice(0, 6));
-            setProjectSaveStatus("Saved privately to My projects.");
-          }
+          storeLocalProject(saved);
+          setActiveProjectId(saved.id);
+          setRecentProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)].slice(0, 6));
+          setProjectSaveStatus(
+            remoteSaved
+              ? "Saved privately to My projects."
+              : "Saved on this device. Run supabase/schema.sql in Supabase SQL Editor to sync across devices."
+          );
         }
       } catch (saveError) {
         console.error("Project save error:", saveError);
