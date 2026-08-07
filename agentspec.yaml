@@ -1,0 +1,287 @@
+name: ai-startup-builder
+version: "1.0.0"
+description: >
+  A 6-agent autonomous AI system that transforms any startup idea into a complete,
+  investor-ready startup package. Given a plain-English idea, it sequentially runs
+  specialized AI agents to produce: market research, business strategy, financial
+  model, brand identity, deploy-ready landing page HTML, and a 10-slide investor
+  pitch deck. Each agent builds on the output of the previous one, creating a
+  coherent, interconnected startup package.
+
+harness: custom-nextjs-api-routes
+model_provider: google-gemini
+model: gemini-2.5-flash
+framework_version: "1.0.0"
+
+# ── Inputs ──────────────────────────────────────────────────────────────────
+inputs:
+  - name: startup_idea
+    type: string
+    required: true
+    description: >
+      A plain-English description of the startup idea. Can be short (3 words)
+      or detailed (several sentences). Examples:
+      - "AI-based agriculture startup using drone technology"
+      - "Mental health app for Gen Z with AI therapy"
+      - "SaaS tool for remote team collaboration"
+
+# ── Agents (Subagents) ───────────────────────────────────────────────────────
+agents:
+
+  - id: market-research
+    name: Market Research Agent
+    role: >
+      World-class market research analyst that produces comprehensive market
+      intelligence reports from a startup idea.
+    endpoint: /api/agents/market-research
+    streaming: true
+    outputs:
+      - name: market_research_report
+        type: markdown
+        description: Full market research report
+    behaviors:
+      - id: MR-01
+        description: Report contains an Executive Summary section
+        required: true
+      - id: MR-02
+        description: Report contains TAM, SAM, SOM figures with $ amounts
+        required: true
+      - id: MR-03
+        description: Report contains a competitor analysis table with ≥5 rows
+        required: true
+      - id: MR-04
+        description: Report identifies ≥3 market trends
+        required: true
+      - id: MR-05
+        description: Report contains a CAGR percentage
+        required: true
+      - id: MR-06
+        description: Report provides an opportunity score (X/10)
+        required: true
+      - id: MR-07
+        description: Report is ≥400 words
+        required: true
+
+  - id: business-strategy
+    name: Business Strategy Agent
+    role: >
+      McKinsey-level business strategist that creates comprehensive go-to-market
+      and business model strategies, using market research as context.
+    endpoint: /api/agents/business-strategy
+    streaming: true
+    inputs_from:
+      - agent: market-research
+        field: market_research_report
+    outputs:
+      - name: business_strategy_report
+        type: markdown
+    behaviors:
+      - id: BS-01
+        description: Report contains a Business Model Canvas with ≥6 of 9 blocks filled
+        required: true
+      - id: BS-02
+        description: Report contains a UVP statement in the specified format
+        required: true
+      - id: BS-03
+        description: Report contains a Go-to-Market strategy with ≥3 phases
+        required: true
+      - id: BS-04
+        description: Report contains a SWOT analysis table
+        required: true
+      - id: BS-05
+        description: Report lists ≥5 KPIs
+        required: true
+      - id: BS-06
+        description: Report contains a 90-day strategic priorities list with ≥5 items
+        required: true
+
+  - id: financial-planning
+    name: Financial Planning Agent
+    role: >
+      CFO-level financial modeling expert that creates comprehensive 3-year financial
+      projections, pricing strategy, and unit economics for early-stage startups.
+    endpoint: /api/agents/financial-planning
+    streaming: true
+    inputs_from:
+      - agent: business-strategy
+        field: business_strategy_report
+    outputs:
+      - name: financial_report
+        type: markdown
+    behaviors:
+      - id: FP-01
+        description: Report contains a pricing table with ≥3 tiers and specific $ prices
+        required: true
+      - id: FP-02
+        description: Report contains a Year 1 monthly projection table (12 rows)
+        required: true
+      - id: FP-03
+        description: Report contains a 3-year summary table
+        required: true
+      - id: FP-04
+        description: Report defines CAC, LTV, and LTV:CAC ratio with specific values
+        required: true
+      - id: FP-05
+        description: Report specifies initial capital required with $ amount
+        required: true
+      - id: FP-06
+        description: Report mentions break-even timeline
+        required: true
+
+  - id: branding
+    name: Branding Agent
+    role: >
+      World-class brand strategist and creative director that designs complete
+      brand identities including naming, visual identity, and messaging.
+    endpoint: /api/agents/branding
+    streaming: true
+    inputs_from:
+      - agent: business-strategy
+        field: business_strategy_report
+    outputs:
+      - name: brand_report
+        type: markdown
+    behaviors:
+      - id: BR-01
+        description: Report suggests ≥5 brand name options in a table
+        required: true
+      - id: BR-02
+        description: Report specifies a recommended name with rationale
+        required: true
+      - id: BR-03
+        description: Report includes a color palette table with hex codes
+        required: true
+      - id: BR-04
+        description: Report identifies ≥2 font recommendations
+        required: true
+      - id: BR-05
+        description: Report contains a tagline in blockquote format
+        required: true
+      - id: BR-06
+        description: Report contains a 30-second elevator pitch
+        required: true
+      - id: BR-07
+        description: Report identifies a Brand Archetype
+        required: true
+
+  - id: website-generator
+    name: Website Generator Agent
+    role: >
+      Expert full-stack developer that generates complete, production-ready
+      single-file HTML landing pages with inline CSS and JS.
+    endpoint: /api/agents/website-generator
+    streaming: true
+    inputs_from:
+      - agent: branding
+        field: brand_report
+      - agent: business-strategy
+        field: business_strategy_report
+    outputs:
+      - name: website_html
+        type: html
+    behaviors:
+      - id: WG-01
+        description: Output starts with <!DOCTYPE html> and ends with </html>
+        required: true
+      - id: WG-02
+        description: Output contains a hero section with headline and CTA button
+        required: true
+      - id: WG-03
+        description: Output contains a features/benefits section
+        required: true
+      - id: WG-04
+        description: Output contains a pricing section with ≥3 tiers
+        required: true
+      - id: WG-05
+        description: Output contains a footer
+        required: true
+      - id: WG-06
+        description: Output contains responsive CSS (media queries or mobile-first)
+        required: true
+      - id: WG-07
+        description: Output HTML is ≥200 lines
+        required: true
+
+  - id: pitch-deck
+    name: Pitch Deck Agent
+    role: >
+      Top-tier VC pitch consultant that creates compelling 10-slide investor
+      pitch deck narratives with realistic financial asks.
+    endpoint: /api/agents/pitch-deck
+    streaming: true
+    inputs_from:
+      - agent: business-strategy
+        field: business_strategy_report
+      - agent: financial-planning
+        field: financial_report
+      - agent: branding
+        field: brand_report
+    outputs:
+      - name: pitch_deck_report
+        type: markdown
+    behaviors:
+      - id: PD-01
+        description: Report contains exactly 10 slide sections (## Slide 1 through ## Slide 10)
+        required: true
+      - id: PD-02
+        description: Report contains a Problem slide with market pain described
+        required: true
+      - id: PD-03
+        description: Report contains a Market Opportunity slide with TAM/SAM/SOM
+        required: true
+      - id: PD-04
+        description: Report specifies a funding ask amount with $ figure
+        required: true
+      - id: PD-05
+        description: Report contains a Use of Funds table with ≥3 categories
+        required: true
+      - id: PD-06
+        description: Report contains a Team section with ≥2 founder profiles
+        required: true
+      - id: PD-07
+        description: Report contains milestone dates (Month 6, 12, 18)
+        required: true
+
+# ── Orchestration ────────────────────────────────────────────────────────────
+orchestration:
+  type: sequential
+  pipeline:
+    - agent: market-research
+    - agent: business-strategy
+      after: market-research
+    - agent: financial-planning
+      after: business-strategy
+    - agent: branding
+      after: business-strategy
+    - agent: website-generator
+      after: branding
+    - agent: pitch-deck
+      after: [financial-planning, branding]
+
+# ── Evaluation ───────────────────────────────────────────────────────────────
+evaluation:
+  dataset: eval-suite/dataset.yaml
+  criteria: eval-suite/criteria.yaml
+  judge: llm
+  pass_threshold: 0.85
+  min_dataset_size: 20
+
+# ── Tools Used ───────────────────────────────────────────────────────────────
+tools:
+  - name: anthropic_claude_api
+    type: llm
+    description: Primary LLM for all 6 agents via streaming API
+  - name: nextjs_api_routes
+    type: web_api
+    description: Next.js App Router API routes for each agent
+  - name: react_streaming
+    type: frontend
+    description: Real-time streaming output display in browser
+
+# ── Self-Improvement Loop ────────────────────────────────────────────────────
+adl_loop:
+  enabled: true
+  stages: [build, evaluate, diagnose, optimize]
+  gate: human_approval
+  max_iterations: 5
+  optimize_target: pass_threshold

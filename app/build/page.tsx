@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import { Navbar } from "@/components/navbar";
 import { createLocalProject, loadLocalProjects, mergeProjects, normalizeProject, storeLocalProject } from "@/lib/projects";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { MutagentOrchestrator } from "@/lib/mutagent-orchestrator";
 import {
   IconBrand,
   IconFinance,
@@ -211,64 +212,7 @@ function deriveAccount(user: { id: string; email?: string | null; user_metadata?
 }
 
 // ── Streaming helper ──────────────────────────────────
-async function streamAgentOutput(
-  endpoint: string,
-  body: Record<string, string>,
-  runId: string,
-  onChunk: (text: string) => void,
-  onTrace: (status: TraceStatus, outputChars?: number, durationMs?: number, error?: string) => void
-): Promise<string> {
-  const startedAt = performance.now();
-  onTrace("started");
-  let res: Response;
-  try {
-    res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Run-Id": runId },
-      body: JSON.stringify(body),
-    });
-  } catch (networkErr) {
-    const message = `Network error — is the dev server running? (${networkErr})`;
-    onTrace("failed", undefined, Math.round(performance.now() - startedAt), message);
-    throw new Error(message);
-  }
-
-  if (!res.ok) {
-    let msg = `Server error ${res.status}`;
-    try {
-      const json = await res.json();
-      msg = json.error || msg;
-    } catch { /* ignore parse error */ }
-    onTrace("failed", undefined, Math.round(performance.now() - startedAt), msg);
-    throw new Error(msg);
-  }
-
-  if (!res.body) {
-    const message = "No response body from server";
-    onTrace("failed", undefined, Math.round(performance.now() - startedAt), message);
-    throw new Error(message);
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let full = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      full += text;
-      onChunk(full);
-    }
-  } catch (streamError) {
-    const message = streamError instanceof Error ? streamError.message : "Streaming response failed";
-    onTrace("failed", full.length, Math.round(performance.now() - startedAt), message);
-    throw streamError;
-  }
-  onTrace("completed", full.length, Math.round(performance.now() - startedAt));
-  return full;
-}
+// Moved to lib/mutagent-orchestrator.ts
 
 // ── Typewriter component ────────────────────────────────
 function Typewriter({ text, speed = 100 }: { text: string; speed?: number }) {
@@ -733,88 +677,44 @@ function BuildPageInner() {
     let pitchDeck = "";
 
     try {
-      setCurrentAgent(0);
-      marketResearch = await streamAgentOutput(
-        "/api/agents/market-research",
-        { idea },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, marketResearch: text })),
-        updateTrace("marketResearch")
-      );
-      setCompletedAgents((p) => new Set([...p, 0]));
-      if (abortRef.current) return;
+      const orchestrator = new MutagentOrchestrator(runId);
+      const results = await orchestrator.executePipeline(idea, {
+        onAgentStart: (idx, key) => {
+          setCurrentAgent(idx);
+          setActiveTab(key);
+        },
+        onAgentUpdate: (key, text) => {
+          setOutputs((p) => ({ ...p, [key]: text }));
+        },
+        onAgentComplete: (idx, key) => {
+          setCompletedAgents((p) => new Set([...p, idx]));
+        },
+        onWebsitePreview: (websiteHtml) => {
+          setWebsitePreview(websiteHtml);
+          if (typeof window !== "undefined") {
+            try {
+              const blob = new Blob([websiteHtml], { type: "text/html" });
+              const url = URL.createObjectURL(blob);
+              window.open(url, "_blank");
+            } catch (err) {
+              console.error("Popup block error:", err);
+            }
+          }
+        },
+        onTraceUpdate: updateTrace,
+        isAborted: () => abortRef.current
+      });
 
-      setCurrentAgent(1);
-      setActiveTab("businessStrategy");
-      businessStrategy = await streamAgentOutput(
-        "/api/agents/business-strategy",
-        { idea, marketResearch },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, businessStrategy: text })),
-        updateTrace("businessStrategy")
-      );
-      setCompletedAgents((p) => new Set([...p, 1]));
-      if (abortRef.current) return;
-
-      setCurrentAgent(2);
-      setActiveTab("financialPlanning");
-      financialPlanning = await streamAgentOutput(
-        "/api/agents/financial-planning",
-        { idea, strategy: businessStrategy },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, financialPlanning: text })),
-        updateTrace("financialPlanning")
-      );
-      setCompletedAgents((p) => new Set([...p, 2]));
-      if (abortRef.current) return;
-
-      setCurrentAgent(3);
-      setActiveTab("branding");
-      branding = await streamAgentOutput(
-        "/api/agents/branding",
-        { idea, strategy: businessStrategy },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, branding: text })),
-        updateTrace("branding")
-      );
-      setCompletedAgents((p) => new Set([...p, 3]));
-      if (abortRef.current) return;
-
-      setCurrentAgent(4);
-      setActiveTab("websiteGenerator");
-      const website = await streamAgentOutput(
-        "/api/agents/website-generator",
-        { idea, branding, strategy: businessStrategy },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, websiteGenerator: text })),
-        updateTrace("websiteGenerator")
-      );
-      if (!website.trim().startsWith("<!DOCTYPE html>") || !website.trim().endsWith("</html>")) {
-        throw new Error("The launch site generation ended early. Please run the package again to generate a complete HTML/CSS/JS file.");
-      }
-      setWebsitePreview(website);
-      if (typeof window !== "undefined") {
-        try {
-          const blob = new Blob([website], { type: "text/html" });
-          const url = URL.createObjectURL(blob);
-          window.open(url, "_blank");
-        } catch (err) {
-          console.error("Popup block error:", err);
-        }
-      }
-      setCompletedAgents((p) => new Set([...p, 4]));
-      if (abortRef.current) return;
-
-      setCurrentAgent(5);
-      setActiveTab("pitchDeck");
-      pitchDeck = await streamAgentOutput(
-        "/api/agents/pitch-deck",
-        { idea, strategy: businessStrategy, financials: financialPlanning, branding },
-        runId,
-        (text) => setOutputs((p) => ({ ...p, pitchDeck: text })),
-        updateTrace("pitchDeck")
-      );
-      setCompletedAgents((p) => new Set([...p, 5]));
+      if (!results) return; // Pipeline aborted
+      
+      const {
+        marketResearch,
+        businessStrategy,
+        financialPlanning,
+        branding,
+        website,
+        pitchDeck
+      } = results;
 
       try {
         const supabase = getSupabaseBrowserClient();
@@ -1451,6 +1351,37 @@ function BuildPageInner() {
                       </div>
                     ))}
                   </div>
+
+                  {/* ── Mutagent Trace Panel ── */}
+                  {traceEntries.length > 0 && (
+                    <div className="mutagent-trace-panel">
+                      <div className="mutagent-trace-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "16px" }}>🧬</span>
+                          <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 600 }}>Mutagent Trace</h3>
+                          <span style={{ fontSize: "12px", color: "var(--text-dim)", fontFamily: "monospace" }}>{traceRunId}</span>
+                        </div>
+                        <button className="btn btn-secondary btn-sm" onClick={handleDownloadTrace}>
+                          <ActionIcon name="download" size={12} /> Download JSONL
+                        </button>
+                      </div>
+                      <div className="mutagent-trace-list">
+                        {traceEntries.map((t, i) => (
+                          <div key={i} className={`mutagent-trace-item status-${t.status}`}>
+                            <div className="trace-agent">
+                              <strong>{AGENTS.find(a => a.key === t.agent)?.label || t.agent}</strong>
+                            </div>
+                            <div className="trace-meta">
+                              <span className={`trace-badge badge-${t.status}`}>{t.status}</span>
+                              {t.durationMs !== undefined && <span className="trace-stat">{t.durationMs}ms</span>}
+                              {t.outputChars !== undefined && <span className="trace-stat">{t.outputChars} chars</span>}
+                            </div>
+                            {t.error && <div className="trace-err">{t.error}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* ── Main Two-Column Area ── */}
                   <div className="exec-main-area">

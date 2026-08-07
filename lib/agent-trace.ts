@@ -1,3 +1,5 @@
+import { Mutagent } from "@mutagent/sdk";
+
 type TraceStatus = "started" | "completed" | "failed";
 
 export type AgentTrace = {
@@ -7,7 +9,13 @@ export type AgentTrace = {
   inputChars: number;
 };
 
+// Initialize the Mutagent SDK client for cloud integration (if configured)
+const mutagentClient = new Mutagent();
+
 function emit(event: Record<string, unknown>) {
+  // If a mutagent API key is provided, we can route traces to the cloud
+  // mutagentClient.agents.logTrace(event); 
+  
   console.info(JSON.stringify({ service: "zing-ai-startup-builder", traceVersion: 1, ...event }));
 }
 
