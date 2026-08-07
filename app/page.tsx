@@ -46,6 +46,33 @@ const OUTPUTS = [
   { title: "Investor deck", detail: "Slide-by-slide story with funding ask" },
 ];
 
+const PLANS = [
+  {
+    name: "Starter",
+    price: "$19",
+    cadence: "/ month",
+    blurb: "Perfect for founders validating a first idea.",
+    features: ["1 active workspace", "6-agent startup package", "Exportable launch assets"],
+    featured: false,
+  },
+  {
+    name: "Growth",
+    price: "$49",
+    cadence: "/ month",
+    blurb: "For teams iterating fast and shipping weekly.",
+    features: ["Unlimited workspaces", "Priority generation", "Team collaboration notes"],
+    featured: true,
+  },
+  {
+    name: "Scale",
+    price: "$99",
+    cadence: "/ month",
+    blurb: "For founders building a full investor story.",
+    features: ["Advanced strategy reviews", "Custom brand direction", "Dedicated launch support"],
+    featured: false,
+  },
+];
+
 export default function HomePage() {
   return (
     <>
@@ -171,6 +198,39 @@ export default function HomePage() {
                     <span>{item.detail}</span>
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="section" id="pricing">
+          <div className="container">
+            <div className="section-intro">
+              <p className="section-kicker">Pricing</p>
+              <h2 className="section-heading">Flexible plans for every stage</h2>
+              <p className="section-copy">
+                Choose a monthly subscription that matches the pace of your startup journey.
+              </p>
+            </div>
+            <div className="pricing-grid">
+              {PLANS.map((plan) => (
+                <article key={plan.name} className={`pricing-card${plan.featured ? " pricing-card-featured" : ""}`}>
+                  {plan.featured && <span className="pricing-badge">Most popular</span>}
+                  <h3 className="pricing-name">{plan.name}</h3>
+                  <p className="pricing-blurb">{plan.blurb}</p>
+                  <div className="pricing-price-row">
+                    <span className="pricing-price">{plan.price}</span>
+                    <span className="pricing-cadence">{plan.cadence}</span>
+                  </div>
+                  <ul className="pricing-features">
+                    {plan.features.map((feature) => (
+                      <li key={feature}>{feature}</li>
+                    ))}
+                  </ul>
+                  <Link href="/build" className={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`}>
+                    Choose {plan.name}
+                  </Link>
+                </article>
               ))}
             </div>
           </div>
