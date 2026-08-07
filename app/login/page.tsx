@@ -77,7 +77,7 @@ function LoginPageInner() {
   useEffect(() => {
     try {
       const supabase = getSupabaseBrowserClient();
-      supabase.auth.getUser().then(({ data }) => {
+      supabase.auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
         if (data.user) {
           router.replace(safeNext);
           router.refresh();
@@ -236,14 +236,14 @@ function LoginPageInner() {
                 <span />
               </div>
               <div className="social-row" aria-label="Sign in with a social account">
-                {(["google", "github", "apple"] as const).map((name) => (
+                {(["google", "github"] as const).map((name) => (
                   <button
                     className="social-button"
                     key={name}
                     type="button"
-                    disabled={isLoading || name === "apple"}
-                    onClick={() => name !== "apple" && signInWith(name)}
-                    aria-label={name === "apple" ? "Apple sign-in coming soon" : `Continue with ${name}`}
+                    disabled={isLoading}
+                    onClick={() => signInWith(name)}
+                    aria-label={`Continue with ${name}`}
                   >
                     <SocialIcon name={name} />
                   </button>

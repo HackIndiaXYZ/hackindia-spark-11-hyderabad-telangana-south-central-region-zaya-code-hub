@@ -48,13 +48,26 @@ export default function ProjectsPage() {
         }
         setEmail(user.email ?? null);
 
-        const { data, error: queryError } = await supabase
+        let projectList: Project[] = [];
+        const { data: firstTry, error: queryError } = await supabase
           .from("projects")
           .select("id, idea, title, created_at, updated_at, deliverables")
           .order("created_at", { ascending: false });
 
-        if (queryError) throw queryError;
-        setProjects(data ?? []);
+        if (queryError && queryError.message.includes("title")) {
+          const { data: fallbackTry, error: fallbackError } = await supabase
+            .from("projects")
+            .select("id, idea, created_at, updated_at, deliverables")
+            .order("created_at", { ascending: false });
+          if (fallbackError) throw fallbackError;
+          projectList = (fallbackTry ?? []).map((p: any) => ({ ...p, title: null }));
+        } else if (queryError) {
+          throw queryError;
+        } else {
+          projectList = firstTry ?? [];
+        }
+
+        setProjects(projectList);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Could not load projects.");
       } finally {

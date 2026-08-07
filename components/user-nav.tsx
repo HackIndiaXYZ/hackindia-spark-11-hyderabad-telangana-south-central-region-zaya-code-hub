@@ -35,11 +35,11 @@ export function UserNav() {
   useEffect(() => {
     try {
       const supabase = getSupabaseBrowserClient();
-      supabase.auth.getUser().then(({ data }) => {
+      supabase.auth.getUser().then(({ data }: { data: { user: import('@supabase/supabase-js').User | null } }) => {
         setUser(deriveUser(data.user));
         setReady(true);
       });
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: listener } = supabase.auth.onAuthStateChange((_event: import('@supabase/supabase-js').AuthChangeEvent, session: import('@supabase/supabase-js').Session | null) => {
         setUser(deriveUser(session?.user ?? null));
         setReady(true);
       });
@@ -115,9 +115,9 @@ export function UserNav() {
             <span className="account-avatar lg" aria-hidden>
               {user.initial}
             </span>
-            <div>
-              <strong>{user.name}</strong>
-              <span>{user.email}</span>
+            <div className="account-meta">
+              <strong className="account-dropdown-name">{user.name}</strong>
+              <span className="account-dropdown-email">{user.email}</span>
             </div>
           </div>
           <div className="account-dropdown-links">

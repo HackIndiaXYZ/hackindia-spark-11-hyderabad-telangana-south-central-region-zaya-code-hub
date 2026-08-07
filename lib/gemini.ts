@@ -1,20 +1,15 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 import { finishAgentTrace, type AgentTrace } from "@/lib/agent-trace";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
-
 export function getGeminiKey(): string | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === "your_gemini_api_key_here") return null;
-  return apiKey;
+  // Return dummy key to prevent key check from blocking
+  return "ollama-configured";
 }
 
 export function geminiKeyError() {
   return NextResponse.json(
     {
-      error:
-        "GEMINI_API_KEY is not configured. Please add it to .env.local and restart the server.",
+      error: "Ollama API is not configured.",
     },
     { status: 500 }
   );
@@ -24,41 +19,58 @@ export async function streamGeminiResponse(
   prompt: string,
   options?: { maxOutputTokens?: number; model?: string; trace?: AgentTrace }
 ): Promise<Response> {
-  const apiKey = getGeminiKey();
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not configured");
+  const url = "https://ollama.com/api/chat";
+  const authHeader = "Bearer 654d04675ffd4002a0e6471d6ae1b828.Id9ullJFLVBdU3ng_z9yJjLB";
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: options?.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL,
-    generationConfig: {
-      maxOutputTokens: options?.maxOutputTokens ?? 8192,
-      temperature: 0.7,
-    },
-  });
+  let responseText = "";
+  let outputChars = 0;
 
-  const result = await model.generateContentStream(prompt);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": authHeader,
+      },
+      body: JSON.stringify({
+        model: "minimax-m3",
+        messages: [{
+          role: "user",
+          content: prompt
+        }],
+        stream: false
+      })
+    });
 
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("API error response:", errText);
+      throw new Error(`API error: ${res.status} - ${errText}`);
+    }
+
+    const json = await res.json();
+    responseText = json.message?.content || "";
+    outputChars = responseText.length;
+  } catch (err) {
+    console.error("API call failed:", err);
+    if (options?.trace) {
+      const errObj = err instanceof Error ? err : new Error(String(err));
+      finishAgentTrace(options.trace, "failed", { error: errObj });
+    }
+    throw err;
+  }
+
+  if (options?.trace) {
+    finishAgentTrace(options.trace, "completed", { outputChars });
+  }
+
+  // Stream the response back to the client to simulate the streaming experience
   const encoder = new TextEncoder();
   const readableStream = new ReadableStream({
-    async start(controller) {
-      let outputChars = 0;
-      try {
-        for await (const chunk of result.stream) {
-          const text = chunk.text();
-          if (text) {
-            outputChars += text.length;
-            controller.enqueue(encoder.encode(text));
-          }
-        }
-      } catch (streamErr) {
-        console.error("Gemini stream error:", streamErr);
-        if (options?.trace) finishAgentTrace(options.trace, "failed", { error: streamErr });
-        controller.error(streamErr);
-        return;
-      }
-      if (options?.trace) finishAgentTrace(options.trace, "completed", { outputChars });
+    start(controller) {
+      controller.enqueue(encoder.encode(responseText));
       controller.close();
-    },
+    }
   });
 
   return new Response(readableStream, {

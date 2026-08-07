@@ -164,6 +164,30 @@ const EMPTY_OUTPUTS: AgentOutputs = {
   websiteGenerator: "",
   pitchDeck: "",
 };
+const AI_MESSAGES = [
+  "Initializing AI agent network...",
+  "Scanning market signals and trends...",
+  "Estimating TAM / SAM / SOM...",
+  "Validating problem-solution fit...",
+  "Mapping competitive landscape...",
+  "Identifying customer personas...",
+  "Defining go-to-market strategy...",
+  "Stress-testing business model assumptions...",
+  "Modeling unit economics and LTV/CAC...",
+  "Projecting 3-year revenue milestones...",
+  "Crafting brand identity and voice...",
+  "Designing conversion narrative...",
+  "Generating landing page HTML/CSS/JS...",
+  "Framing investor pitch narrative...",
+  "Packaging startup into deliverables...",
+];
+
+function formatTime(secs: number): string {
+  const m = Math.floor(secs / 60).toString().padStart(2, "0");
+  const s = Math.floor(secs % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 
 function titleFromIdea(idea: string) {
   const cleaned = idea.trim().replace(/\s+/g, " ");
@@ -242,6 +266,45 @@ async function streamAgentOutput(
   return full;
 }
 
+// ── Typewriter component ────────────────────────────────
+function Typewriter({ text, speed = 100 }: { text: string; speed?: number }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [index, setIndex] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    setDisplayedText("");
+    setIndex(0);
+  }, [text, mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (index < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText((prev) => prev + text[index]);
+        setIndex((prev) => prev + 1);
+      }, speed);
+      return () => clearTimeout(timeout);
+    }
+  }, [index, text, speed, mounted]);
+
+  if (!mounted) {
+    return <span className="typewriter-container" style={{ opacity: 0 }}>{text}</span>;
+  }
+
+  return (
+    <span className="typewriter-container">
+      {displayedText}
+      <span className="typewriter-cursor">|</span>
+    </span>
+  );
+}
+
 // ── Main Build Page ────────────────────────────────────
 function BuildPageInner() {
   const searchParams = useSearchParams();
@@ -266,6 +329,101 @@ function BuildPageInner() {
   const abortRef = useRef<boolean>(false);
   const previewUrlRef = useRef<string | null>(null);
   const briefFileInputRef = useRef<HTMLInputElement>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [liveMessageIndex, setLiveMessageIndex] = useState(0);
+  const [placeholder, setPlaceholder] = useState("Describe the startup you want to build — customer, problem, and what makes it different");
+
+  useEffect(() => {
+    let active = true;
+    let exampleIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+    let timeoutId: NodeJS.Timeout;
+
+    const basePlaceholder = "Describe the startup you want to build — e.g. ";
+
+    function tick() {
+      if (!active) return;
+      const currentFullText = EXAMPLES[exampleIndex];
+
+      if (isDeleting) {
+        charIndex--;
+      } else {
+        charIndex++;
+      }
+
+      const currentTyped = currentFullText.substring(0, charIndex);
+      setPlaceholder(basePlaceholder + currentTyped);
+
+      let delta = 70 - Math.random() * 20;
+
+      if (isDeleting) {
+        delta /= 2;
+      }
+
+      if (!isDeleting && charIndex === currentFullText.length) {
+        delta = 3000;
+        isDeleting = true;
+      } else if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        exampleIndex = (exampleIndex + 1) % EXAMPLES.length;
+        delta = 500;
+      }
+
+      timeoutId = setTimeout(tick, delta);
+    }
+
+    timeoutId = setTimeout(tick, 1000);
+
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+    };
+  }, []);
+
+  const [showPreloader, setShowPreloader] = useState(true);
+  const [preloaderProgress, setPreloaderProgress] = useState(0);
+  const [preloaderStatus, setPreloaderStatus] = useState("Initializing AI agent collective...");
+
+  useEffect(() => {
+    let progressInterval: NodeJS.Timeout;
+    let statusInterval: NodeJS.Timeout;
+    let fadeTimeout: NodeJS.Timeout;
+
+    const statuses = [
+      "Initializing AI agent collective...",
+      "Establishing secure workspace session...",
+      "Loading 6-person venture team models...",
+      "Syncing with Zaya Code Hub...",
+      "Workspace ready."
+    ];
+    let statusIdx = 0;
+
+    progressInterval = setInterval(() => {
+      setPreloaderProgress((p) => {
+        if (p >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return p + 1;
+      });
+    }, 20);
+
+    statusInterval = setInterval(() => {
+      statusIdx = Math.min(statusIdx + 1, statuses.length - 1);
+      setPreloaderStatus(statuses[statusIdx]);
+    }, 500);
+
+    fadeTimeout = setTimeout(() => {
+      setShowPreloader(false);
+    }, 2400);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(statusInterval);
+      clearTimeout(fadeTimeout);
+    };
+  }, []);
 
   const progress = completedAgents.size / AGENTS.length;
   const hasOutputs = Object.values(outputs).some(Boolean);
@@ -275,6 +433,15 @@ function BuildPageInner() {
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!running) return;
+    setElapsedTime(0);
+    setLiveMessageIndex(0);
+    const timer = setInterval(() => setElapsedTime((t) => t + 1), 1000);
+    const msgTimer = setInterval(() => setLiveMessageIndex((i) => (i + 1) % AI_MESSAGES.length), 3000);
+    return () => { clearInterval(timer); clearInterval(msgTimer); };
+  }, [running]);
 
   useEffect(() => {
     let mounted = true;
@@ -304,23 +471,50 @@ function BuildPageInner() {
           updated_at: new Date().toISOString(),
         });
 
-        const { data: projects } = await supabase
+        let projects: SavedProject[] = [];
+        const { data: firstProjectsTry, error: projectsError } = await supabase
           .from("projects")
           .select("id, idea, title, created_at")
           .order("created_at", { ascending: false })
           .limit(6);
 
-        if (mounted) setRecentProjects(projects ?? []);
+        if (projectsError && projectsError.message.includes("title")) {
+          const { data: fallbackProjects, error: fallbackError } = await supabase
+            .from("projects")
+            .select("id, idea, created_at")
+            .order("created_at", { ascending: false })
+            .limit(6);
+          if (!fallbackError && fallbackProjects) {
+            projects = fallbackProjects.map((p: any) => ({ ...p, title: null }));
+          }
+        } else if (!projectsError && firstProjectsTry) {
+          projects = firstProjectsTry;
+        }
+
+        if (mounted) setRecentProjects(projects);
 
         const projectId = searchParams.get("project");
         if (projectId) {
-          const { data: project, error: projectError } = await supabase
+          let project = null;
+          const { data: firstProjectTry, error: projectError } = await supabase
             .from("projects")
             .select("id, idea, title, deliverables")
             .eq("id", projectId)
             .maybeSingle();
 
-          if (projectError) throw projectError;
+          if (projectError && projectError.message.includes("title")) {
+            const { data: fallbackProject, error: fallbackError } = await supabase
+              .from("projects")
+              .select("id, idea, deliverables")
+              .eq("id", projectId)
+              .maybeSingle();
+            if (fallbackError) throw fallbackError;
+            project = fallbackProject ? { ...fallbackProject, title: null } : null;
+          } else if (projectError) {
+            throw projectError;
+          } else {
+            project = firstProjectTry;
+          }
           if (project && mounted) {
             const deliverables = (project.deliverables ?? {}) as Partial<AgentOutputs>;
             const nextOutputs: AgentOutputs = {
@@ -364,7 +558,7 @@ function BuildPageInner() {
 
     try {
       const supabase = getSupabaseBrowserClient();
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: listener } = supabase.auth.onAuthStateChange((_event: import('@supabase/supabase-js').AuthChangeEvent, session: import('@supabase/supabase-js').Session | null) => {
         if (!session?.user) {
           setAccount(null);
           setRecentProjects([]);
@@ -494,6 +688,15 @@ function BuildPageInner() {
         throw new Error("The launch site generation ended early. Please run the package again to generate a complete HTML/CSS/JS file.");
       }
       setWebsitePreview(website);
+      if (typeof window !== "undefined") {
+        try {
+          const blob = new Blob([website], { type: "text/html" });
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+        } catch (err) {
+          console.error("Popup block error:", err);
+        }
+      }
       setCompletedAgents((p) => new Set([...p, 4]));
       if (abortRef.current) return;
 
@@ -530,15 +733,34 @@ function BuildPageInner() {
             },
             updated_at: new Date().toISOString(),
           };
-          const { data: saved, error: saveError } = await supabase
+          let saved: SavedProject | null = null;
+          const { data: firstSaveTry, error: saveError } = await supabase
             .from("projects")
             .insert(payload)
             .select("id, idea, title, created_at")
             .single();
-          if (saveError) throw saveError;
-          setActiveProjectId(saved.id);
-          setRecentProjects((current) => [saved, ...current.filter((item) => item.id !== saved.id)].slice(0, 6));
-          setProjectSaveStatus("Saved privately to My projects.");
+
+          if (saveError && saveError.message.includes("title")) {
+            const fallbackPayload = { ...payload };
+            delete (fallbackPayload as any).title;
+            const { data: fallbackSaveTry, error: fallbackError } = await supabase
+              .from("projects")
+              .insert(fallbackPayload)
+              .select("id, idea, created_at")
+              .single();
+            if (fallbackError) throw fallbackError;
+            saved = fallbackSaveTry ? { ...fallbackSaveTry, title: null } : null;
+          } else if (saveError) {
+            throw saveError;
+          } else {
+            saved = firstSaveTry;
+          }
+
+          if (saved) {
+            setActiveProjectId(saved.id);
+            setRecentProjects((current) => [saved!, ...current.filter((item) => item.id !== saved!.id)].slice(0, 6));
+            setProjectSaveStatus("Saved privately to My projects.");
+          }
         }
       } catch (saveError) {
         console.error("Project save error:", saveError);
@@ -688,6 +910,27 @@ function BuildPageInner() {
 
   return (
     <>
+      {showPreloader && (
+        <div className="preloader-overlay">
+          <div className="preloader-card">
+            <div className="preloader-logo-area">
+              <div className="preloader-logo-glow" />
+              <div className="preloader-icon">🧠</div>
+            </div>
+            <h2 className="preloader-title">Zing AI Startup Builder</h2>
+            <div className="preloader-tagline">
+              <Typewriter text="Concept to Capital: Build your own startup." speed={50} />
+            </div>
+            
+            <div className="preloader-progress-track">
+              <div className="preloader-progress-fill" style={{ width: `${preloaderProgress}%` }} />
+            </div>
+            
+            <div className="preloader-status">{preloaderStatus}</div>
+          </div>
+        </div>
+      )}
+
       <Navbar variant="build" />
 
       <main className="workspace premium-workspace">
@@ -788,7 +1031,7 @@ function BuildPageInner() {
           <div className="workspace-header">
             <p className="eyebrow">Founder workspace</p>
             <h1 className="workspace-title">
-              {activeProjectId ? "Your saved package, ready to refine." : "Turn a sharp idea into a fundable company."}
+              {activeProjectId ? "Your saved package, ready to refine." : <Typewriter text="Concept to Capital: Build your own startup." />}
             </h1>
             <p className="workspace-sub">
               Your six-person AI venture team turns one brief into research, strategy, brand, website, and pitch — then saves it to your account when you are signed in.
@@ -808,7 +1051,7 @@ function BuildPageInner() {
                   className="idea-textarea"
                   value={idea}
                   onChange={(e) => setIdea(e.target.value)}
-                  placeholder="Describe the startup you want to build — customer, problem, and what makes it different"
+                  placeholder={placeholder}
                   disabled={running}
                   rows={4}
                 />
@@ -895,233 +1138,222 @@ function BuildPageInner() {
           )}
 
           {(running || completedAgents.size > 0) && (
-            <div className="progress-card premium-progress">
-              <div className="progress-top">
-                <div className="progress-label">
-                  {running && currentAgent >= 0 ? (
-                    <>
-                      {CurrentAgentIcon && <CurrentAgentIcon size={16} />} {AGENT_ACTIVITY[AGENTS[currentAgent].key].working}
-                    </>
-                  ) : completedAgents.size === AGENTS.length ? (
-                    <>
-                      <ActionIcon name="check" size={16} /> All deliverables are ready to review.
-                    </>
-                  ) : (
-                    "Agents paused"
-                  )}
-                  {running && <span className="phase-loader" aria-label="Current phase is loading" />}
-                </div>
-                <div className="progress-pct">{Math.round(progress * 100)}%</div>
-              </div>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
-              </div>
-              <div className="progress-steps">
-                {AGENTS.map((a, i) => (
-                  <div key={a.key} className="progress-step">
-                    <div className={`step-badge ${completedAgents.has(i) ? "done" : currentAgent === i ? "active" : ""}`}>
-                      {completedAgents.has(i) ? <ActionIcon name="check" size={17} /> : <a.Icon size={17} />}
+            <div className="premium-execution-layout">
+              {completedAgents.size === AGENTS.length ? (
+                <>
+                  {/* ── Celebration Screen ── */}
+                  <div className="exec-celebration">
+                    <div className="exec-celebration-icon">
+                      <ActionIcon name="check" size={48} />
                     </div>
-                    <div className="step-name">{a.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {traceRunId && (
-            <section className="trace-card" aria-label="Mutagent agent run trace">
-              <div className="trace-head">
-                <div>
-                  <p className="trace-kicker">Mutagent trace</p>
-                  <div className="trace-run-id" title={traceRunId}>
-                    Run {traceRunId}
-                  </div>
-                </div>
-                <button className="ghost-action" onClick={handleDownloadTrace} disabled={!traceEntries.length}>
-                  <ActionIcon name="download" size={14} /> Download JSONL
-                </button>
-              </div>
-              <div className="trace-list">
-                {AGENTS.map((agent) => {
-                  const entry = traceEntries.find((item) => item.agent === agent.key);
-                  return (
-                    <div className={`trace-row ${entry ? `is-${entry.status}` : "is-pending"}`} key={agent.key}>
-                      <span className="trace-status" aria-label={entry?.status ?? "pending"}>
-                        {entry?.status === "completed" ? (
-                          <ActionIcon name="check" size={14} />
-                        ) : entry?.status === "failed" ? (
-                          <ActionIcon name="alert" size={14} />
-                        ) : entry?.status === "started" ? (
-                          <span className="trace-pulse" />
-                        ) : (
-                          "·"
-                        )}
-                      </span>
-                      <span className="trace-agent">{agent.label}</span>
-                      <span className="trace-meta">
-                        {entry?.status === "started"
-                          ? "Streaming…"
-                          : entry?.status === "completed"
-                            ? `${entry.outputChars?.toLocaleString() ?? 0} chars · ${entry.durationMs ?? 0} ms`
-                            : entry?.status === "failed"
-                              ? entry.error
-                              : "Waiting"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {(running || hasOutputs) && (
-            <div className="output-shell premium-output">
-              <div className="tabs-row">
-                {AGENTS.map((a, i) => (
-                  <button
-                    key={a.key}
-                    className={`tab-btn ${activeTab === a.key ? "active" : ""}`}
-                    onClick={() => setActiveTab(a.key)}
-                    style={activeTab === a.key ? { color: a.color, borderBottomColor: a.color } : {}}
-                  >
-                    <a.Icon size={15} /> {a.label}
-                    {completedAgents.has(i) && (
-                      <span className="tab-check">
-                        <ActionIcon name="check" size={13} />
-                      </span>
-                    )}
-                    {currentAgent === i && <span className="stream-cursor" style={{ marginLeft: 4 }} />}
-                  </button>
-                ))}
-              </div>
-
-              <div>
-                <div className="panel-head">
-                  <div className="panel-title">
-                    <span className="panel-title-icon" style={{ color: activeAgent.color }}>
-                      <ActiveAgentIcon size={18} />
-                    </span>
-                    {activeAgent.label} Agent
-                    {completedAgents.has(AGENTS.findIndex((a) => a.key === activeTab)) && (
-                      <span className="badge badge-green">
-                        <ActionIcon name="check" size={12} /> Complete
-                      </span>
-                    )}
-                    {currentAgent === AGENTS.findIndex((a) => a.key === activeTab) && (
-                      <span className="badge badge-live">
-                        <ActionIcon name="bolt" size={12} /> Building
-                      </span>
-                    )}
-                  </div>
-                  {activeOutput && (
-                    <div className="panel-actions">
-                      <button className="ghost-action" onClick={handleCopy}>
-                        <ActionIcon name={copied ? "check" : "copy"} size={14} /> {copied ? "Copied" : "Copy"}
+                    <h2>🎉 Startup Blueprint Ready</h2>
+                    <p>Your AI venture team has successfully generated your complete startup package.</p>
+                    {projectSaveStatus && <div className="project-save-status" style={{ marginBottom: 8 }}>{projectSaveStatus}</div>}
+                    <div className="success-actions" style={{ marginTop: 24, justifyContent: "center" }}>
+                      <button className="btn btn-secondary" onClick={resetWorkspace}>
+                        <ActionIcon name="reset" size={15} /> Start over
                       </button>
-                      <button className="ghost-action" onClick={handleDownload}>
-                        <ActionIcon name="download" size={14} /> Download
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const bundle = AGENTS.map((a) => `# ${a.label}\n\n${outputs[a.key]}`).join("\n\n---\n\n");
+                          const blob = new Blob([bundle], { type: "text/markdown" });
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = "startup-package.md";
+                          link.click();
+                        }}
+                      >
+                        <ActionIcon name="download" size={15} /> Download Full Package
                       </button>
+                      <button className="btn btn-secondary" onClick={handleExportFolder}>
+                        <ActionIcon name="download" size={15} /> Export Folder
+                      </button>
+                      <Link href="/projects" className="btn btn-secondary">My Projects</Link>
                     </div>
-                  )}
-                </div>
-
-                {!activeOutput ? (
-                  <div className="stream-box empty activity-empty">
-                    <div className={`activity-orb ${isActiveAgent ? "is-working" : ""}`} style={{ color: activeAgent.color }}>
-                      <activeAgent.Icon size={26} />
-                    </div>
-                    <div className="activity-kicker">
-                      {isActiveAgent ? "In progress now" : isUpcoming ? "Up next in your pipeline" : "Ready when you are"}
-                    </div>
-                    <div className="activity-title">
-                      {isActiveAgent ? activity.working : isUpcoming ? activity.upcoming : `Bring ${activeAgent.label.toLowerCase()} into focus.`}
-                    </div>
-                    <div className="activity-copy">
-                      {isActiveAgent || isUpcoming
-                        ? activity.detail
-                        : "Start the pipeline and every specialist will build on the work that comes before it."}
-                    </div>
-                    {(isActiveAgent || isUpcoming) && (
-                      <div className="thinking-chain" aria-label="Agent workflow">
-                        {activity.tasks.map((task, index) => (
-                          <div className="thinking-node" key={task}>
-                            <span className="thinking-index">{String(index + 1).padStart(2, "0")}</span>
-                            <span>{task}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {exportStatus && <div className="export-status">{exportStatus}</div>}
                   </div>
-                ) : isWebsiteTab ? (
-                  <div style={{ padding: 0 }}>
-                    <div className="preview-note">Live preview — your landing page code is ready to deploy</div>
-                    {previewUrl ? (
-                      <div className="website-preview" style={{ margin: "20px", borderRadius: "var(--radius-md)" }}>
-                        <div className="browser-bar">
-                          <div className="browser-dots">
-                            <div className="browser-dot dot-red" />
-                            <div className="browser-dot dot-yellow" />
-                            <div className="browser-dot dot-green" />
-                          </div>
-                          <div className="browser-url">your-startup.com — AI Generated Landing Page</div>
+
+                  {/* ── Output Tabs (revealed after completion) ── */}
+                  <div className="output-shell premium-output" style={{ marginTop: 24 }}>
+                    <div className="tabs-row">
+                      {AGENTS.map((a, i) => (
+                        <button
+                          key={a.key}
+                          className={`tab-btn ${activeTab === a.key ? "active" : ""}`}
+                          onClick={() => setActiveTab(a.key)}
+                          style={activeTab === a.key ? { color: a.color, borderBottomColor: a.color } : {}}
+                        >
+                          <a.Icon size={15} /> {a.label}
+                          {completedAgents.has(i) && (
+                            <span className="tab-check"><ActionIcon name="check" size={13} /></span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="panel-head">
+                        <div className="panel-title">
+                          <span className="panel-title-icon" style={{ color: activeAgent.color }}>
+                            <ActiveAgentIcon size={18} />
+                          </span>
+                          {activeAgent.label} Agent
+                          {completedAgents.has(activeAgentIndex) && (
+                            <span className="badge badge-green"><ActionIcon name="check" size={12} /> Complete</span>
+                          )}
                         </div>
-                        <iframe src={previewUrl} className="preview-iframe" title="Generated Website Preview" sandbox="allow-same-origin allow-scripts" />
+                        {activeOutput && (
+                          <div className="panel-actions">
+                            {isWebsiteTab && previewUrl && (
+                              <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="ghost-action"
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                Open in New Tab
+                              </a>
+                            )}
+                            <button className="ghost-action" onClick={handleCopy}>
+                              <ActionIcon name={copied ? "check" : "copy"} size={14} /> {copied ? "Copied" : "Copy"}
+                            </button>
+                            <button className="ghost-action" onClick={handleDownload}>
+                              <ActionIcon name="download" size={14} /> Download
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="stream-box">
-                        <pre style={{ fontSize: 12, overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap" }}>
-                          {activeOutput}
-                          {currentAgent === 4 && <span className="stream-cursor" />}
-                        </pre>
+                      {isWebsiteTab ? (
+                        <div style={{ padding: 0 }}>
+                          <div className="preview-note">Live preview — your landing page code is ready to deploy</div>
+                          {previewUrl ? (
+                            <div className="website-preview" style={{ margin: "20px", borderRadius: "var(--radius-md)" }}>
+                              <div className="browser-bar">
+                                <div className="browser-dots">
+                                  <div className="browser-dot dot-red" />
+                                  <div className="browser-dot dot-yellow" />
+                                  <div className="browser-dot dot-green" />
+                                </div>
+                                <div className="browser-url">your-startup.com — AI Generated Landing Page</div>
+                              </div>
+                              <iframe src={previewUrl} className="preview-iframe" title="Generated Website Preview" sandbox="allow-same-origin allow-scripts" />
+                            </div>
+                          ) : (
+                            <div className="stream-box">
+                              <pre style={{ fontSize: 12, overflow: "auto", maxHeight: 500, whiteSpace: "pre-wrap" }}>{activeOutput}</pre>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="stream-box">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeOutput}</ReactMarkdown>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* ── Live Execution Header ── */}
+                  <div className="exec-header">
+                    <div className="exec-header-top">
+                      <div className="exec-header-title">
+                        <h2><span>🧠</span> AI Startup Builder</h2>
+                        <div className="exec-header-subtitle">Building your startup using multiple AI agents in real time...</div>
                       </div>
-                    )}
+                      <div className="exec-header-stats">
+                        <div className="exec-stat">
+                          <span className="exec-stat-label">Estimated Remaining</span>
+                          <span className="exec-stat-value">{formatTime(Math.max(0, 180 - elapsedTime))}</span>
+                        </div>
+                        <div className="exec-stat">
+                          <span className="exec-stat-label">Elapsed Time</span>
+                          <span className="exec-stat-value">{formatTime(elapsedTime)}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="exec-progress-container">
+                      <div className="exec-progress-bar-bg">
+                        <div className="exec-progress-bar-fill" style={{ width: `${Math.max(2, progress * 100)}%` }} />
+                      </div>
+                      <div className="exec-progress-pct">{Math.round(progress * 100)}%</div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="stream-box">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeOutput}</ReactMarkdown>
-                    {currentAgent === AGENTS.findIndex((a) => a.key === activeTab) && <span className="stream-cursor" />}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
-          {completedAgents.size === AGENTS.length && (
-            <div className="success-band premium-success">
-              <div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Your startup package is ready</div>
-                <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
-                  All 6 agents completed · Business plan, brand, website, and pitch deck generated
-                </div>
-                {projectSaveStatus && <div className="project-save-status">{projectSaveStatus}</div>}
-              </div>
-              <div className="success-actions">
-                <button className="btn btn-secondary" onClick={resetWorkspace}>
-                  <ActionIcon name="reset" size={15} /> Start over
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    const bundle = AGENTS.map((a) => `# ${a.label}\n\n${outputs[a.key]}`).join("\n\n---\n\n");
-                    const blob = new Blob([bundle], { type: "text/markdown" });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.href = url;
-                    link.download = "startup-package.md";
-                    link.click();
-                  }}
-                >
-                  <ActionIcon name="download" size={15} /> Download full package
-                </button>
-                <button className="btn btn-secondary" onClick={handleExportFolder}>
-                  <ActionIcon name="download" size={15} /> Export folder
-                </button>
-                <Link href="/projects" className="btn btn-secondary">
-                  My projects
-                </Link>
-              </div>
-              {exportStatus && <div className="export-status">{exportStatus}</div>}
+                  {/* ── Phase Stepper ── */}
+                  <div className="exec-stepper">
+                    {AGENTS.map((a, i) => (
+                      <div key={a.key} className={`exec-step ${completedAgents.has(i) ? "is-done" : currentAgent === i ? "is-active" : ""}`}>
+                        <div className="exec-step-icon">
+                          {completedAgents.has(i) ? <ActionIcon name="check" size={16} /> : <a.Icon size={16} />}
+                        </div>
+                        <div className="exec-step-label">{a.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ── Main Two-Column Area ── */}
+                  <div className="exec-main-area">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                      <div className="exec-current-phase">
+                        <div className="exec-phase-badge">Phase {Math.max(1, currentAgent + 1)} of {AGENTS.length}</div>
+                        <div className="exec-phase-title">
+                          {currentAgent >= 0 ? AGENTS[currentAgent].label : "Warming up..."}
+                        </div>
+                        <div className="exec-phase-task">
+                          {currentAgent >= 0 ? AGENT_ACTIVITY[AGENTS[currentAgent].key].working : "Connecting AI agents..."}
+                        </div>
+                        <div className="exec-checklist">
+                          {currentAgent >= 0 && AGENT_ACTIVITY[AGENTS[currentAgent].key].tasks.map((task, idx) => {
+                            const isDone = elapsedTime > (currentAgent * 30 + idx * 7);
+                            return (
+                              <div key={task} className={`exec-checklist-item ${isDone ? "is-done" : "is-waiting"}`}>
+                                {isDone ? <ActionIcon name="check" size={16} /> : <span>⏳</span>} {task}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="exec-terminal">
+                        <div className="exec-terminal-title">Live AI Activity</div>
+                        <div className="exec-terminal-lines">
+                          {AI_MESSAGES.slice(Math.max(0, liveMessageIndex - 3), liveMessageIndex).map((msg, i) => (
+                            <div key={i} className="exec-terminal-line is-done">
+                              <ActionIcon name="check" size={14} /> {msg}
+                            </div>
+                          ))}
+                          <div className="exec-terminal-line is-active">
+                            <span style={{ color: "#3B82F6" }}>❯</span> {AI_MESSAGES[liveMessageIndex]}<span className="exec-type-cursor" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="exec-agent-grid">
+                      {AGENTS.map((a, i) => (
+                        <div key={a.key} className={`exec-agent-card ${completedAgents.has(i) ? "is-done" : currentAgent === i ? "is-active" : ""}`}>
+                          <div className="exec-agent-icon">
+                            {completedAgents.has(i) ? <ActionIcon name="check" size={20} /> : <a.Icon size={20} />}
+                          </div>
+                          <div className="exec-agent-info">
+                            <div className="exec-agent-name">{a.label}</div>
+                            <div className="exec-agent-status">
+                              {completedAgents.has(i) ? "Completed" : currentAgent === i ? "Working..." : "Waiting..."}
+                            </div>
+                          </div>
+                          <div className="exec-agent-meta">
+                            <div className="exec-agent-pct">
+                              {completedAgents.has(i) ? "100%" : currentAgent === i ? `${Math.round((elapsedTime % 30) / 30 * 100)}%` : "0%"}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
