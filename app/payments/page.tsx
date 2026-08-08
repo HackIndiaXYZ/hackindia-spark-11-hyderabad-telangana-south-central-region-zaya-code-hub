@@ -60,7 +60,7 @@ export default async function PaymentsPage({
   } else {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      redirect(`/login?next=/payments?plan=${planId}`);
+      redirect(`/login?next=${encodeURIComponent(`/payments?plan=${planId}`)}`);
     }
   }
 
