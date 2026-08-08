@@ -16,6 +16,7 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.2",
     "@swc/helpers": "^0.5.23",
+    "@vercel/analytics": "^2.0.1",
     "axios": "^1.19.0",
     "caniuse-lite": "^1.0.30001807",
     "next": "16.3.0",
