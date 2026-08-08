@@ -9,6 +9,7 @@ type AuthUser = {
   email: string;
   name: string;
   initial: string;
+  isPro: boolean;
 };
 
 function deriveUser(user: { email?: string | null; user_metadata?: Record<string, unknown> } | null): AuthUser | null {
@@ -22,6 +23,7 @@ function deriveUser(user: { email?: string | null; user_metadata?: Record<string
     email: user.email,
     name,
     initial: name.charAt(0).toUpperCase(),
+    isPro: user.user_metadata?.is_pro === true,
   };
 }
 
@@ -101,7 +103,12 @@ export function UserNav() {
           {user.initial}
         </span>
         <span className="account-meta">
-          <strong>{user.name}</strong>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {user.name}
+            {user.isPro && (
+              <span style={{ fontSize: '10px', padding: '1px 6px', background: 'linear-gradient(to right, #7C3AED, #EC4899)', color: 'white', borderRadius: '4px', fontWeight: 600, letterSpacing: '0.05em' }}>PRO</span>
+            )}
+          </strong>
           <em>Account</em>
         </span>
         <span className="account-caret" aria-hidden>
@@ -116,7 +123,12 @@ export function UserNav() {
               {user.initial}
             </span>
             <div className="account-meta">
-              <strong className="account-dropdown-name">{user.name}</strong>
+              <strong className="account-dropdown-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {user.name}
+                {user.isPro && (
+                  <span style={{ fontSize: '10px', padding: '1px 6px', background: 'linear-gradient(to right, #7C3AED, #EC4899)', color: 'white', borderRadius: '4px', fontWeight: 600, letterSpacing: '0.05em' }}>PRO</span>
+                )}
+              </strong>
               <span className="account-dropdown-email">{user.email}</span>
             </div>
           </div>

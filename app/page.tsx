@@ -227,7 +227,7 @@ export default function HomePage() {
                       <li key={feature}>{feature}</li>
                     ))}
                   </ul>
-                  <Link href="/build" className={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`}>
+                  <Link href={`/payments?plan=plan_${plan.name.toLowerCase()}_monthly`} className={`btn ${plan.featured ? "btn-primary" : "btn-secondary"}`}>
                     Choose {plan.name}
                   </Link>
                 </article>
