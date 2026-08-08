@@ -50,9 +50,10 @@ export function DodoCheckoutForm({ lookupKey }: { lookupKey: string }) {
         name: fullName,
       });
 
-      const checkoutUrl = data?.checkout_url || data?.checkoutUrl || data?.url;
+      const checkoutUrl = data?.payment_link || data?.checkout_url || data?.checkoutUrl || data?.url;
 
       if (!checkoutUrl || typeof checkoutUrl !== "string") {
+        console.error("Dodo API Response:", data);
         throw new Error("Checkout URL was not returned by Dodo Payments");
       }
 
