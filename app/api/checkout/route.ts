@@ -66,6 +66,13 @@ export async function POST(request: Request) {
 
     const dodoPayload = {
       product_cart: [{ product_id: productId, quantity: 1 }],
+      billing: {
+        city: null,
+        country: "US",
+        state: null,
+        street: null,
+        zipcode: null,
+      },
       ...(customer ? { customer } : {}),
       ...(process.env.DODO_PAYMENTS_RETURN_URL
         ? { return_url: process.env.DODO_PAYMENTS_RETURN_URL }
