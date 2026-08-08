@@ -11,7 +11,7 @@ Zing turns a startup brief into an investor-ready package using six coordinated 
 
 It also includes a visible Mutagent trace panel for every run, with JSONL export for the hackathon submission.
 
--site url : https://ai-agents-startup-deck.vercel.app 
+-site url : https://zing.hamrolearning.com
 
 ## Run locally
 
