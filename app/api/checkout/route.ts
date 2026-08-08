@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import { Checkout } from "@dodopayments/nextjs";
 import { z } from "zod";
 
 const dodoEnvironment =
   process.env.DODO_PAYMENTS_ENVIRONMENT === "live_mode"
     ? "live_mode"
     : "test_mode";
-
-const checkoutHandler = Checkout({
-  bearerToken: process.env.DODO_PAYMENTS_API_KEY || "dummy",
-  returnUrl: process.env.DODO_PAYMENTS_RETURN_URL || "http://localhost:3000/build",
-  environment: dodoEnvironment,
-  type: "session",
-}) as unknown as (request: Request) => Promise<Response>;
 
 const PLAN_LOOKUP_KEY_VALUES = [
   "plan_starter_monthly",
@@ -80,15 +72,35 @@ export async function POST(request: Request) {
         : {}),
     };
 
-    const transformedRequest = new Request(request.url, {
+    const apiUrl =
+      dodoEnvironment === "live_mode"
+        ? "https://live.dodopayments.com/payments"
+        : "https://test.dodopayments.com/payments";
+
+    const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.DODO_PAYMENTS_API_KEY}`,
       },
       body: JSON.stringify(dodoPayload),
     });
 
-    return checkoutHandler(transformedRequest);
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      console.error("Dodo API error:", response.status, data);
+      return NextResponse.json(
+        {
+          error: `Dodo API Error (${response.status}): ${
+            data?.error || data?.message || "Unknown error"
+          }`,
+        },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Error creating Dodo checkout session:", error);
 

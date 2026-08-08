@@ -60,16 +60,16 @@ export default async function PaymentsPage({
   } else {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      redirect(`/login?next=${encodeURIComponent(`/payments?plan=${planId}`)}`);
+      redirect(`/login?next=/payments?plan=${planId}`);
     }
   }
 
   return (
     <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#FAFAFA' }}>
       <div className="container" style={{ margin: 'auto', padding: '40px 20px', maxWidth: '1000px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-          
+
           {/* Left Column: Form */}
           <div style={{ padding: '40px' }}>
             <Link
@@ -126,7 +126,7 @@ export default async function PaymentsPage({
             </div>
           </div>
         </div>
-        
+
       </div>
     </main>
   );
